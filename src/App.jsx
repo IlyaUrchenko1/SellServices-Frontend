@@ -1,8 +1,8 @@
 import { Link, Route, BrowserRouter as Router, Routes } from 'react-router-dom'
 import './App.css'
 import Create from './components/Create/Create'
+import Search from './components/Search/Search'
 import Update from './components/Update/Update'
-
 
 function App() {
   return (
@@ -11,6 +11,7 @@ function App() {
         <ul>
           <li><Link to="/">Создание</Link></li>
           <li><Link to="/update">Обновление</Link></li>
+          <li><Link to="/search">Поиск</Link></li>
         </ul>
       </nav>
       <Routes>
@@ -21,7 +22,11 @@ function App() {
           },
           {
             type: "adress",
-            placeholder: "Введите адресс"
+            placeholder: "Введите район"
+          },
+          {
+            type: "street",
+            placeholder: "Введите улицу"
           },
           {
             type: "price",
@@ -29,6 +34,7 @@ function App() {
           }
         ]} />} />
         <Route path="/update" element={<Update />} />
+        <Route path="/search" element={<Search />} />
       </Routes>
     </Router>
   )

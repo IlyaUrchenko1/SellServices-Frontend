@@ -1,13 +1,60 @@
 import PropTypes from 'prop-types'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import './Create.css'
+
+const CACHE_KEY = 'citiesCache'
+const CACHE_EXPIRY = 24 * 60 * 60 * 1000 // 24 часа
 
 const Create = ({ inputs }) => {
 	const [selectedCity, setSelectedCity] = useState('')
+	const [selectedDistrict, setSelectedDistrict] = useState('')
+	const [selectedStreet, setSelectedStreet] = useState('')
+	const [price, setPrice] = useState('')
 	const [showCities, setShowCities] = useState(false)
+	const [showDistricts, setShowDistricts] = useState(false)
+	const [showStreets, setShowStreets] = useState(false)
 	const [suggestedCities, setSuggestedCities] = useState([])
+	const [suggestedDistricts, setSuggestedDistricts] = useState([])
+	const [suggestedStreets, setSuggestedStreets] = useState([])
+	const [allCities, setAllCities] = useState([])
+	const [allDistricts, setAllDistricts] = useState([])
+	const [allStreets, setAllStreets] = useState([])
+	const [errors, setErrors] = useState({
+		city: '',
+		district: '',
+		street: ''
+	})
 
-	const fetchCitiesFromOverpassAPI = async () => {
+	// Функция для получения данных из кеша
+	const getCachedData = useCallback(() => {
+		const cached = localStorage.getItem(CACHE_KEY)
+		if (cached) {
+			const { data, timestamp } = JSON.parse(cached)
+			if (Date.now() - timestamp < CACHE_EXPIRY) {
+				return data
+			}
+		}
+		return null
+	}, [])
+
+	// Функция для сохранения данных в кеш
+	const setCacheData = useCallback((data) => {
+		const cacheData = {
+			data,
+			timestamp: Date.now()
+		}
+		localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData))
+	}, [])
+
+	const fetchCitiesFromOverpassAPI = useCallback(async () => {
+		// Проверяем кеш
+		const cachedCities = getCachedData()
+		if (cachedCities) {
+			setAllCities(cachedCities)
+			setSuggestedCities(cachedCities)
+			return
+		}
+
 		const query = `[out:json][timeout:25];area["name"="Россия"]->.searchArea;(node["place"="city"](area.searchArea);node["place"="town"](area.searchArea););out body;`
 
 		try {
@@ -20,63 +67,393 @@ const Create = ({ inputs }) => {
 			})
 
 			if (!response.ok) {
-				throw new Error(`Network response was not ok: ${response.status}`)
+				throw new Error(`Ошибка сети: ${response.status}`)
 			}
 
 			const data = await response.json()
-			console.log('Raw API response:', data) // Логируем весь ответ API
 
 			if (!data.elements || !Array.isArray(data.elements)) {
-				console.error('Invalid API response format:', data)
-				return
+				throw new Error('Неверный формат ответа API')
 			}
 
-			// Получаем только русские названия городов из тега name
 			const cities = data.elements
-				.filter(item => item.tags && item.tags.name) // Проверяем наличие tags и name
-				.map(item => item.tags.name)
-				.filter((city, index, self) => self.indexOf(city) === index) // Убираем дубликаты
-				.sort() // Сортируем по алфавиту
+				.filter(item => item.tags && item.tags.name)
+				.map(item => ({
+					name: item.tags.name,
+					population: item.tags.population || 0,
+					isRegionalCenter: !!item.tags['admin_level']
+				}))
+				.sort((a, b) => {
+					// Сортировка по важности: региональные центры выше, затем по населению
+					if (a.isRegionalCenter !== b.isRegionalCenter) {
+						return b.isRegionalCenter ? 1 : -1
+					}
+					return b.population - a.population
+				})
+				.map(city => city.name)
 
-			console.log('Processed cities:', cities)
-
-			if (cities.length === 0) {
-				console.warn('No cities found in the response')
-			}
-
+			setAllCities(cities)
 			setSuggestedCities(cities)
+			setCacheData(cities)
 		} catch (error) {
-			console.error('Error fetching cities:', error)
+			console.error('Ошибка при загрузке городов:', error)
 			setSuggestedCities([])
 		}
-	}
+	}, [getCachedData, setCacheData])
 
-	useEffect(() => {
-		console.log('Component mounted, fetching cities...')
-		fetchCitiesFromOverpassAPI()
+	const fetchDistrictsFromOverpassAPI = useCallback(async (city) => {
+		if (!city) return
+
+		const query = `[out:json];area["name"="${city}"]->.searchArea;(relation["admin_level"="8"](area.searchArea););out body;`
+
+		try {
+			const response = await fetch('https://overpass-api.de/api/interpreter', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: `data=${encodeURIComponent(query)}`,
+			})
+
+			if (!response.ok) {
+				throw new Error(`Ошибка сети: ${response.status}`)
+			}
+
+			const data = await response.json()
+
+			if (!data.elements || !Array.isArray(data.elements)) {
+				throw new Error('Неверный формат ответа API')
+			}
+
+			const districts = data.elements
+				.filter(item => item.tags && item.tags.name)
+				.map(item => item.tags.name.replace(/район\s*/i, '').trim())
+
+			setAllDistricts(districts)
+			setSuggestedDistricts(districts)
+		} catch (error) {
+			console.error('Ошибка при загрузке районов:', error)
+			setSuggestedDistricts([])
+		}
 	}, [])
 
-	const searchCities = (query) => {
-		if (query.length < 2) {
+	const fetchStreetsFromOverpassAPI = useCallback(async (district) => {
+		if (!district) return
+
+		const query = `[out:json];area[name="район ${district}"]->.searchArea;(way["highway"](area.searchArea););out body;>;out skel qt;`
+
+		console.log(query)
+
+		try {
+			const response = await fetch('https://overpass-api.de/api/interpreter', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: `data=${encodeURIComponent(query)}`,
+			})
+
+			if (!response.ok) {
+				throw new Error(`Ошибка сети: ${response.status}`)
+			}
+
+			const data = await response.json()
+
+			if (!data.elements || !Array.isArray(data.elements)) {
+				throw new Error('Неверный формат ответа API')
+			}
+
+			const streets = data.elements
+				.filter(item => item.tags && item.tags.name)
+				.map(item => item.tags.name)
+				.filter((value, index, self) => self.indexOf(value) === index) // Удаляем дубликаты
+
+			setAllStreets(streets)
+			setSuggestedStreets(streets)
+		} catch (error) {
+			console.error('Ошибка при загрузке улиц:', error)
+			setSuggestedStreets([])
+		}
+	}, [])
+
+	useEffect(() => {
+		fetchCitiesFromOverpassAPI()
+	}, [fetchCitiesFromOverpassAPI])
+
+	useEffect(() => {
+		if (selectedCity) {
+			fetchDistrictsFromOverpassAPI(selectedCity)
+		}
+	}, [selectedCity, fetchDistrictsFromOverpassAPI])
+
+	useEffect(() => {
+		if (selectedDistrict) {
+			fetchStreetsFromOverpassAPI(selectedDistrict)
+		}
+	}, [selectedDistrict, fetchStreetsFromOverpassAPI])
+
+	// Улучшенный алгоритм поиска с использованием весов
+	const searchCities = useCallback((query) => {
+		if (!query || query.length < 2) {
+			setSuggestedCities(allCities)
 			return
 		}
 
-		const filteredCities = suggestedCities.filter(city => 
-			city.toLowerCase().includes(query.toLowerCase())
-		)
-		console.log('Filtered cities:', filteredCities)
-		setSuggestedCities(filteredCities)
+		const normalizedQuery = query.toLowerCase()
+		const results = allCities
+			.map(city => {
+				const normalizedCity = city.toLowerCase()
+				let score = 0
+
+				// Точное совпадение начала строки
+				if (normalizedCity.startsWith(normalizedQuery)) {
+					score += 100
+				}
+
+				// Совпадение части слова
+				if (normalizedCity.includes(normalizedQuery)) {
+					score += 50
+				}
+
+				// Расстояние Левенштейна для неточных совпадений
+				const distance = levenshteinDistance(normalizedQuery, normalizedCity)
+				score -= distance * 2
+
+				return { city, score }
+			})
+			.filter(item => item.score > 0)
+			.sort((a, b) => b.score - a.score)
+			.map(item => item.city)
+
+		setSuggestedCities(results)
+		
+		// Проверка валидности города
+		if (results.length === 0) {
+			setErrors(prev => ({...prev, city: 'Введите корректное название города'}))
+		} else {
+			setErrors(prev => ({...prev, city: ''}))
+		}
+	}, [allCities])
+
+	const searchDistricts = useCallback((query) => {
+		if (!query || query.length < 2) {
+			setSuggestedDistricts(allDistricts)
+			return
+		}
+
+		const normalizedQuery = query.toLowerCase()
+		const results = allDistricts
+			.map(district => {
+				const normalizedDistrict = district.toLowerCase()
+				let score = 0
+
+				if (normalizedDistrict.startsWith(normalizedQuery)) {
+					score += 100
+				}
+
+				if (normalizedDistrict.includes(normalizedQuery)) {
+					score += 50
+				}
+
+				const distance = levenshteinDistance(normalizedQuery, normalizedDistrict)
+				score -= distance * 2
+
+				return { district, score }
+			})
+			.filter(item => item.score > 0)
+			.sort((a, b) => b.score - a.score)
+			.map(item => item.district)
+
+		setSuggestedDistricts(results)
+		
+		// Проверка валидности района
+		if (results.length === 0) {
+			setErrors(prev => ({...prev, district: 'Введите корректное название района'}))
+		} else {
+			setErrors(prev => ({...prev, district: ''}))
+		}
+	}, [allDistricts])
+
+	const searchStreets = useCallback((query) => {
+		if (!query || query.length < 2) {
+			setSuggestedStreets(allStreets)
+			return
+		}
+
+		const normalizedQuery = query.toLowerCase()
+		const results = allStreets
+			.map(street => {
+				const normalizedStreet = street.toLowerCase()
+				let score = 0
+
+				if (normalizedStreet.startsWith(normalizedQuery)) {
+					score += 100
+				}
+
+				if (normalizedStreet.includes(normalizedQuery)) {
+					score += 50
+				}
+
+				const distance = levenshteinDistance(normalizedQuery, normalizedStreet)
+				score -= distance * 2
+
+				return { street, score }
+			})
+			.filter(item => item.score > 0)
+			.sort((a, b) => b.score - a.score)
+			.map(item => item.street)
+
+		setSuggestedStreets(results)
+		
+		// Проверка валидности улицы
+		if (results.length === 0) {
+			setErrors(prev => ({...prev, street: 'Введите корректное название улицы'}))
+		} else {
+			setErrors(prev => ({...prev, street: ''}))
+		}
+	}, [allStreets])
+
+	// Функция для вычисления расстояния Левенштейна
+	const levenshteinDistance = (a, b) => {
+		if (a.length === 0) return b.length
+		if (b.length === 0) return a.length
+
+		const matrix = []
+
+		for (let i = 0; i <= b.length; i++) {
+			matrix[i] = [i]
+		}
+
+		for (let j = 0; j <= a.length; j++) {
+			matrix[0][j] = j
+		}
+
+		for (let i = 1; i <= b.length; i++) {
+			for (let j = 1; j <= a.length; j++) {
+				if (b.charAt(i - 1) === a.charAt(j - 1)) {
+					matrix[i][j] = matrix[i - 1][j - 1]
+				} else {
+					matrix[i][j] = Math.min(
+						matrix[i - 1][j - 1] + 1,
+						matrix[i][j - 1] + 1,
+						matrix[i - 1][j] + 1
+					)
+				}
+			}
+		}
+
+		return matrix[b.length][a.length]
 	}
 
+	// Оптимизированный debounce для поиска
 	useEffect(() => {
 		const delayDebounce = setTimeout(() => {
-			if (selectedCity) {
-				searchCities(selectedCity)
-			}
+			searchCities(selectedCity)
 		}, 300)
 
 		return () => clearTimeout(delayDebounce)
-	}, [selectedCity])
+	}, [selectedCity, searchCities])
+
+	useEffect(() => {
+		const delayDebounce = setTimeout(() => {
+			searchDistricts(selectedDistrict)
+		}, 300)
+
+		return () => clearTimeout(delayDebounce)
+	}, [selectedDistrict, searchDistricts])
+
+	useEffect(() => {
+		const delayDebounce = setTimeout(() => {
+			searchStreets(selectedStreet)
+		}, 300)
+
+		return () => clearTimeout(delayDebounce)
+	}, [selectedStreet, searchStreets])
+
+	// Мемоизация отрендеренного списка городов
+	const renderedCitiesList = useMemo(() => {
+		return suggestedCities.map((city, i) => (
+			<li key={i} onClick={() => {
+				setSelectedCity(city)
+				setShowCities(false)
+				setErrors(prev => ({...prev, city: ''}))
+			}}>{city}</li>
+		))
+	}, [suggestedCities])
+
+	const renderedDistrictsList = useMemo(() => {
+		return suggestedDistricts.map((district, i) => (
+			<li key={i} onClick={() => {
+				setSelectedDistrict(district)
+				setShowDistricts(false)
+				setErrors(prev => ({...prev, district: ''}))
+			}}>{district}</li>
+		))
+	}, [suggestedDistricts])
+
+	const renderedStreetsList = useMemo(() => {
+		return suggestedStreets.map((street, i) => (
+			<li key={i} onClick={() => {
+				setSelectedStreet(street)
+				setShowStreets(false)
+				setErrors(prev => ({...prev, street: ''}))
+			}}>{street}</li>
+		))
+	}, [suggestedStreets])
+
+	const handleInputChange = (type, value) => {
+		switch (type) {
+			case 'city':
+				setSelectedCity(value)
+				// При изменении города очищаем зависимые поля
+				setSelectedDistrict('')
+				setSelectedStreet('')
+				break
+			case 'adress':
+				setSelectedDistrict(value)
+				// При изменении района очищаем улицу
+				setSelectedStreet('')
+				break
+			case 'street':
+				setSelectedStreet(value)
+				break
+			case 'price':
+				setPrice(value)
+				break
+			default:
+				break
+		}
+	}
+
+	const getInputValue = (type) => {
+		switch (type) {
+			case 'city':
+				return selectedCity
+			case 'adress':
+				return selectedDistrict
+			case 'street':
+				return selectedStreet
+			case 'price':
+				return price
+			default:
+				return ''
+		}
+	}
+
+	const isInputDisabled = (type) => {
+		switch (type) {
+			case 'city':
+				return false
+			case 'adress':
+				return !selectedCity
+			case 'street':
+				return !selectedCity || !selectedDistrict
+			case 'price':
+				return false
+			default:
+				return false
+		}
+	}
 
 	return (
 		<div>
@@ -85,23 +462,49 @@ const Create = ({ inputs }) => {
 					<div key={i} className="input-wrapper">
 						<input
 							type="text"
-							className="input-field"
+							className={`input-field ${errors[input.type] ? 'error' : ''}`}
 							placeholder={input.placeholder}
-							value={input.type === 'city' ? selectedCity : ''}
-							onChange={e => input.type === 'city' && setSelectedCity(e.target.value)}
-							onFocus={() => input.type === 'city' && setShowCities(true)}
+							value={getInputValue(input.type)}
+							onChange={e => handleInputChange(input.type, e.target.value)}
+							onFocus={() => {
+								if (input.type === 'city') setShowCities(true)
+								if (input.type === 'adress') setShowDistricts(true)
+								if (input.type === 'street') setShowStreets(true)
+							}}
+							onBlur={() => {
+								if (input.type === 'city') setTimeout(() => setShowCities(false), 200)
+								if (input.type === 'adress') setTimeout(() => setShowDistricts(false), 200)
+								if (input.type === 'street') setTimeout(() => setShowStreets(false), 200)
+							}}
+							disabled={isInputDisabled(input.type)}
 						/>
-						{input.type === 'city' && (
+						{errors[input.type] && <div className="error-message">{errors[input.type]}</div>}
+						{(input.type === 'city' || input.type === 'adress' || input.type === 'street') && (
 							<div className="city-dropdown">
-								<button className="dropdown-toggle" onClick={() => setShowCities(!showCities)}>▼</button>
-								{showCities && suggestedCities.length > 0 && (
+								<button
+									className="dropdown-toggle"
+									onClick={(e) => {
+										e.preventDefault()
+										if (input.type === 'city') setShowCities(!showCities)
+										if (input.type === 'adress') setShowDistricts(!showDistricts)
+										if (input.type === 'street') setShowStreets(!showStreets)
+									}}
+								>
+									▼
+								</button>
+								{input.type === 'city' && showCities && suggestedCities.length > 0 && (
 									<ul className="cities-list">
-										{suggestedCities.map((city, i) => (
-											<li key={i} onClick={() => {
-												setSelectedCity(city)
-												setShowCities(false)
-											}}>{city}</li>
-										))}
+										{renderedCitiesList}
+									</ul>
+								)}
+								{input.type === 'adress' && showDistricts && suggestedDistricts.length > 0 && (
+									<ul className="cities-list">
+										{renderedDistrictsList}
+									</ul>
+								)}
+								{input.type === 'street' && showStreets && suggestedStreets.length > 0 && (
+									<ul className="cities-list">
+										{renderedStreetsList}
 									</ul>
 								)}
 							</div>
