@@ -142,8 +142,6 @@ const Create = ({ inputs }) => {
 
 		const query = `[out:json];area[name="район ${district}"]->.searchArea;(way["highway"](area.searchArea););out body;>;out skel qt;`
 
-		console.log(query)
-
 		try {
 			const response = await fetch('https://overpass-api.de/api/interpreter', {
 				method: 'POST',
@@ -226,12 +224,12 @@ const Create = ({ inputs }) => {
 			.map(item => item.city)
 
 		setSuggestedCities(results)
-		
+
 		// Проверка валидности города
 		if (results.length === 0) {
-			setErrors(prev => ({...prev, city: 'Введите корректное название города'}))
+			setErrors(prev => ({ ...prev, city: 'Введите корректное название города' }))
 		} else {
-			setErrors(prev => ({...prev, city: ''}))
+			setErrors(prev => ({ ...prev, city: '' }))
 		}
 	}, [allCities])
 
@@ -265,12 +263,12 @@ const Create = ({ inputs }) => {
 			.map(item => item.district)
 
 		setSuggestedDistricts(results)
-		
+
 		// Проверка валидности района
 		if (results.length === 0) {
-			setErrors(prev => ({...prev, district: 'Введите корректное название района'}))
+			setErrors(prev => ({ ...prev, district: 'Введите корректное название района' }))
 		} else {
-			setErrors(prev => ({...prev, district: ''}))
+			setErrors(prev => ({ ...prev, district: '' }))
 		}
 	}, [allDistricts])
 
@@ -304,12 +302,12 @@ const Create = ({ inputs }) => {
 			.map(item => item.street)
 
 		setSuggestedStreets(results)
-		
+
 		// Проверка валидности улицы
 		if (results.length === 0) {
-			setErrors(prev => ({...prev, street: 'Введите корректное название улицы'}))
+			setErrors(prev => ({ ...prev, street: 'Введите корректное название улицы' }))
 		} else {
-			setErrors(prev => ({...prev, street: ''}))
+			setErrors(prev => ({ ...prev, street: '' }))
 		}
 	}, [allStreets])
 
@@ -376,7 +374,7 @@ const Create = ({ inputs }) => {
 			<li key={i} onClick={() => {
 				setSelectedCity(city)
 				setShowCities(false)
-				setErrors(prev => ({...prev, city: ''}))
+				setErrors(prev => ({ ...prev, city: '' }))
 			}}>{city}</li>
 		))
 	}, [suggestedCities])
@@ -386,7 +384,7 @@ const Create = ({ inputs }) => {
 			<li key={i} onClick={() => {
 				setSelectedDistrict(district)
 				setShowDistricts(false)
-				setErrors(prev => ({...prev, district: ''}))
+				setErrors(prev => ({ ...prev, district: '' }))
 			}}>{district}</li>
 		))
 	}, [suggestedDistricts])
@@ -396,7 +394,7 @@ const Create = ({ inputs }) => {
 			<li key={i} onClick={() => {
 				setSelectedStreet(street)
 				setShowStreets(false)
-				setErrors(prev => ({...prev, street: ''}))
+				setErrors(prev => ({ ...prev, street: '' }))
 			}}>{street}</li>
 		))
 	}, [suggestedStreets])
@@ -479,7 +477,7 @@ const Create = ({ inputs }) => {
 							disabled={isInputDisabled(input.type)}
 						/>
 						{errors[input.type] && <div className="error-message">{errors[input.type]}</div>}
-						{(input.type === 'city' || input.type === 'adress' || input.type === 'street') && (
+						{(input.type === 'city' || input.type === 'adress' || input.type === 'street') && !isInputDisabled(input.type) && (
 							<div className="city-dropdown">
 								<button
 									className="dropdown-toggle"
