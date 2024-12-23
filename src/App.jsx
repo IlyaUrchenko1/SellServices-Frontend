@@ -20,16 +20,8 @@ function App() {
             placeholder: "Введите город"
           },
           {
-            type: "ragion",
-            placeholder: "Введите район"
-          },
-          {
-            type: "street",
-            placeholder: "Введите улицу"
-          },
-          {
-            type: "house",
-            placeholder: "Введите номер дома"
+            type: "adress",
+            placeholder: "Введите адресс"
           },
           {
             type: "price",
