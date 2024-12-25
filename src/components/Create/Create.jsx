@@ -324,7 +324,7 @@ const Create = () => {
 		}
 	}, [allStreets])
 
-	// Функция для вычисления расстояния Левенштейна
+	// Функция для вычисления расстояния Леве��штейна
 	const levenshteinDistance = (a, b) => {
 		if (a.length === 0) return b.length
 		if (b.length === 0) return a.length
@@ -356,7 +356,7 @@ const Create = () => {
 		return matrix[b.length][a.length]
 	}
 
-	// Оптимизирован��ый debounce для поиска
+	// Оптимизированный debounce для поиска
 	useEffect(() => {
 		const delayDebounce = setTimeout(() => {
 			searchCities(selectedCity)
@@ -466,6 +466,25 @@ const Create = () => {
 		}
 	}
 
+	const handleCreate = () => {
+		const data = {
+			city: selectedCity,
+			adress: selectedDistrict,
+			street: selectedStreet,
+			price: price
+		}
+
+		// Преобразуем данные в JSON строку
+		const jsonData = JSON.stringify(data)
+
+		// Отправляем данные обратно в Telegram бота
+		if (window.Telegram && window.Telegram.WebApp) {
+			window.Telegram.WebApp.sendData(jsonData)
+		} else {
+			console.error('Telegram WebApp не доступен')
+		}
+	}
+
 	return (
 		<div>
 			<div className="inputs-container">
@@ -524,7 +543,7 @@ const Create = () => {
 				))}
 			</div>
 
-			<button className="create-button">Создать</button>
+			<button className="create-button" onClick={handleCreate}>Создать</button>
 		</div>
 	)
 }
