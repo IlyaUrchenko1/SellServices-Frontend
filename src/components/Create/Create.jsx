@@ -1,11 +1,24 @@
-import PropTypes from 'prop-types'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import './Create.css'
 
 const CACHE_KEY = 'citiesCache'
 const CACHE_EXPIRY = 24 * 60 * 60 * 1000 // 24 часа
 
-const Create = ({ inputs }) => {
+const Create = () => {
+	const location = useLocation()
+	const [inputs, setInputs] = useState([])
+
+	useEffect(() => {
+		const searchParams = new URLSearchParams(location.search)
+		const params = Array.from(searchParams.entries())
+		const formattedInputs = params.map(([type, placeholder]) => ({
+			type,
+			placeholder
+		}))
+		setInputs(formattedInputs)
+	}, [location.search])
+
 	const [selectedCity, setSelectedCity] = useState('')
 	const [selectedDistrict, setSelectedDistrict] = useState('')
 	const [selectedStreet, setSelectedStreet] = useState('')
@@ -343,7 +356,7 @@ const Create = ({ inputs }) => {
 		return matrix[b.length][a.length]
 	}
 
-	// Оптимизированный debounce для поиска
+	// Оптимизирован��ый debounce для поиска
 	useEffect(() => {
 		const delayDebounce = setTimeout(() => {
 			searchCities(selectedCity)
@@ -517,12 +530,7 @@ const Create = ({ inputs }) => {
 }
 
 Create.propTypes = {
-	inputs: PropTypes.arrayOf(
-		PropTypes.shape({
-			type: PropTypes.string.isRequired,
-			placeholder: PropTypes.string.isRequired,
-		})
-	).isRequired,
+	// Убираем propTypes для inputs, так как теперь они получаются из URL
 }
 
 export default Create

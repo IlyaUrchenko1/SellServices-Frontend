@@ -15,24 +15,7 @@ function App() {
         </ul>
       </nav>
       <Routes>
-        <Route path="/" element={<Create inputs={[
-          {
-            type: "city",
-            placeholder: "Введите город"
-          },
-          {
-            type: "adress",
-            placeholder: "Введите район"
-          },
-          {
-            type: "street",
-            placeholder: "Введите улицу"
-          },
-          {
-            type: "price",
-            placeholder: "Введите цену"
-          }
-        ]} />} />
+        <Route path="/" element={<Create />} />
         <Route path="/update" element={<Update />} />
         <Route path="/search" element={<Search />} />
       </Routes>
