@@ -9,6 +9,22 @@ const Create = () => {
 	const location = useLocation()
 	const [inputs, setInputs] = useState([])
 
+	// Логирование доступности Telegram WebApp при инициализации
+	useEffect(() => {
+		console.log('Checking Telegram WebApp availability...')
+		if (window.Telegram && window.Telegram.WebApp) {
+			console.log('Telegram WebApp is available')
+			console.log('WebApp version:', window.Telegram.WebApp.version)
+			console.log('WebApp platform:', window.Telegram.WebApp.platform)
+			console.log('WebApp initData:', window.Telegram.WebApp.initData)
+			console.log('WebApp colorScheme:', window.Telegram.WebApp.colorScheme)
+		} else {
+			console.log('Telegram WebApp is not available')
+			console.log('Window object:', typeof window)
+			console.log('Telegram object:', window.Telegram)
+		}
+	}, [])
+
 	useEffect(() => {
 		const searchParams = new URLSearchParams(location.search)
 		const params = Array.from(searchParams.entries())
@@ -324,7 +340,7 @@ const Create = () => {
 		}
 	}, [allStreets])
 
-	// Функция для вычисления расстояния Леве��штейна
+	// Функция для вычисления расстояния Левенштейна
 	const levenshteinDistance = (a, b) => {
 		if (a.length === 0) return b.length
 		if (b.length === 0) return a.length
@@ -473,16 +489,41 @@ const Create = () => {
 			street: selectedStreet,
 			price: price
 		}
-		console.log(data)
 
-		// Преобразуем данные в JSON строку
 		const jsonData = JSON.stringify(data)
 
-		// Отправляем данные обратно в Telegram бота
-		if (window.Telergam && window.Telergam.WebApp) {
-			window.Telergam.WebApp.sendData(jsonData)
+		console.log('Attempting to send data to Telegram WebApp...')
+		console.log('Data to be sent:', data)
+
+		if (window.Telegram && window.Telegram.WebApp) {
+			console.log('Telegram WebApp methods available:')
+			console.log('- MainButton:', !!window.Telegram.WebApp.MainButton)
+			console.log('- BackButton:', !!window.Telegram.WebApp.BackButton)
+			console.log('- sendData:', !!window.Telegram.WebApp.sendData)
+			console.log('- close:', !!window.Telegram.WebApp.close)
+
+			try {
+				window.Telegram.WebApp.sendData(jsonData)
+				console.log('Data successfully sent to Telegram WebApp')
+			} catch (error) {
+				console.error('Error sending data to Telegram WebApp:', error)
+				console.log('Telegram WebApp state:', {
+					isExpanded: window.Telegram.WebApp.isExpanded,
+					initDataUnsafe: window.Telegram.WebApp.initDataUnsafe,
+					headerColor: window.Telegram.WebApp.headerColor,
+					backgroundColor: window.Telegram.WebApp.backgroundColor
+				})
+			}
 		} else {
-			console.error('Telergam WebApp не доступен')
+			console.error('Telegram WebApp not available')
+			console.log('Window object properties:', Object.keys(window))
+			console.log('Current environment:', {
+				userAgent: window.navigator.userAgent,
+				href: window.location.href,
+				protocol: window.location.protocol,
+				host: window.location.host
+			})
+			alert(`Данные отправлены:\nГород: ${data.city}\nАдрес: ${data.adress}\nУлица: ${data.street}\nЦена: ${data.price} руб.`)
 		}
 	}
 
