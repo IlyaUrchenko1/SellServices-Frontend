@@ -473,15 +473,16 @@ const Create = () => {
 			street: selectedStreet,
 			price: price
 		}
+		console.log(data)
 
 		// Преобразуем данные в JSON строку
 		const jsonData = JSON.stringify(data)
 
 		// Отправляем данные обратно в Telegram бота
-		if (window.Telegram && window.Telegram.WebApp) {
-			window.Telegram.WebApp.sendData(jsonData)
+		if (window.Telergam && window.Telergam.WebApp) {
+			window.Telergam.WebApp.sendData(jsonData)
 		} else {
-			console.error('Telegram WebApp не доступен')
+			console.error('Telergam WebApp не доступен')
 		}
 	}
 
