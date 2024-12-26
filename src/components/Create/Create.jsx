@@ -432,13 +432,11 @@ const Create = () => {
 		switch (type) {
 			case 'city':
 				setSelectedCity(value)
-				// При изменении города очищаем зависимые поля
 				setSelectedDistrict('')
 				setSelectedStreet('')
 				break
-			case 'adress':
+			case 'district':
 				setSelectedDistrict(value)
-				// При изменении района очищаем улицу
 				setSelectedStreet('')
 				break
 			case 'street':
@@ -456,7 +454,7 @@ const Create = () => {
 		switch (type) {
 			case 'city':
 				return selectedCity
-			case 'adress':
+			case 'district':
 				return selectedDistrict
 			case 'street':
 				return selectedStreet
@@ -471,7 +469,7 @@ const Create = () => {
 		switch (type) {
 			case 'city':
 				return false
-			case 'adress':
+			case 'district':
 				return !selectedCity
 			case 'street':
 				return !selectedCity || !selectedDistrict
@@ -485,7 +483,7 @@ const Create = () => {
 	const handleCreate = () => {
 		const data = {
 			city: selectedCity,
-			adress: selectedDistrict,
+			district: selectedDistrict,
 			street: selectedStreet,
 			price: price
 		}
@@ -523,7 +521,7 @@ const Create = () => {
 				protocol: window.location.protocol,
 				host: window.location.host
 			})
-			alert(`Данные отправлены:\nГород: ${data.city}\nАдрес: ${data.adress}\nУлица: ${data.street}\nЦена: ${data.price} руб.`)
+			alert(`Данные отправлены:\nГород: ${data.city}\nАдрес: ${data.district}\nУлица: ${data.street}\nЦена: ${data.price} руб.`)
 		}
 	}
 
@@ -540,25 +538,25 @@ const Create = () => {
 							onChange={e => handleInputChange(input.type, e.target.value)}
 							onFocus={() => {
 								if (input.type === 'city') setShowCities(true)
-								if (input.type === 'adress') setShowDistricts(true)
+								if (input.type === 'district') setShowDistricts(true)
 								if (input.type === 'street') setShowStreets(true)
 							}}
 							onBlur={() => {
 								if (input.type === 'city') setTimeout(() => setShowCities(false), 200)
-								if (input.type === 'adress') setTimeout(() => setShowDistricts(false), 200)
+								if (input.type === 'district') setTimeout(() => setShowDistricts(false), 200)
 								if (input.type === 'street') setTimeout(() => setShowStreets(false), 200)
 							}}
 							disabled={isInputDisabled(input.type)}
 						/>
 						{errors[input.type] && <div className="error-message">{errors[input.type]}</div>}
-						{(input.type === 'city' || input.type === 'adress' || input.type === 'street') && !isInputDisabled(input.type) && (
+						{(input.type === 'city' || input.type === 'district' || input.type === 'street') && !isInputDisabled(input.type) && (
 							<div className="city-dropdown">
 								<button
 									className="dropdown-toggle"
 									onClick={(e) => {
 										e.preventDefault()
 										if (input.type === 'city') setShowCities(!showCities)
-										if (input.type === 'adress') setShowDistricts(!showDistricts)
+										if (input.type === 'district') setShowDistricts(!showDistricts)
 										if (input.type === 'street') setShowStreets(!showStreets)
 									}}
 								>
@@ -569,7 +567,7 @@ const Create = () => {
 										{renderedCitiesList}
 									</ul>
 								)}
-								{input.type === 'adress' && showDistricts && suggestedDistricts.length > 0 && (
+								{input.type === 'district' && showDistricts && suggestedDistricts.length > 0 && (
 									<ul className="cities-list">
 										{renderedDistrictsList}
 									</ul>
