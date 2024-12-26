@@ -8,6 +8,7 @@ const CACHE_EXPIRY = 24 * 60 * 60 * 1000 // 24 часа
 const Create = () => {
 	const location = useLocation()
 	const [inputs, setInputs] = useState([])
+	const [inputValues, setInputValues] = useState({})
 
 	// Логирование доступности Telegram WebApp при инициализации
 	useEffect(() => {
@@ -33,6 +34,13 @@ const Create = () => {
 			placeholder
 		}))
 		setInputs(formattedInputs)
+		
+		// Initialize input values
+		const initialValues = {}
+		params.forEach(([type]) => {
+			initialValues[type] = ''
+		})
+		setInputValues(initialValues)
 	}, [location.search])
 
 	const [selectedCity, setSelectedCity] = useState('')
@@ -446,6 +454,11 @@ const Create = () => {
 				setPrice(value)
 				break
 			default:
+				// Handle custom inputs
+				setInputValues(prev => ({
+					...prev,
+					[type]: value
+				}))
 				break
 		}
 	}
@@ -461,7 +474,7 @@ const Create = () => {
 			case 'price':
 				return price
 			default:
-				return ''
+				return inputValues[type] || ''
 		}
 	}
 
@@ -473,8 +486,6 @@ const Create = () => {
 				return !selectedCity
 			case 'street':
 				return !selectedCity || !selectedDistrict
-			case 'price':
-				return false
 			default:
 				return false
 		}
@@ -482,6 +493,7 @@ const Create = () => {
 
 	const handleCreate = () => {
 		const data = {
+			...inputValues,
 			city: selectedCity,
 			district: selectedDistrict,
 			street: selectedStreet,
@@ -521,7 +533,7 @@ const Create = () => {
 				protocol: window.location.protocol,
 				host: window.location.host
 			})
-			alert(`Данные отправлены:\nГород: ${data.city}\nАдрес: ${data.district}\nУлица: ${data.street}\nЦена: ${data.price} руб.`)
+			alert(`Данные отправлены:\n${Object.entries(data).map(([key, value]) => `${key}: ${value}`).join('\n')}`)
 		}
 	}
 
