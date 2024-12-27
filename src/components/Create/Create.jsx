@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddressSuggestions } from 'react-dadata'
 import 'react-dadata/dist/react-dadata.css'
 import { useLocation } from 'react-router-dom'
@@ -26,14 +26,36 @@ const Create = () => {
 		setInputValues(initialValues)
 	}, [search])
 
+	// Форматирование номера телефона
+	const formatPhoneNumber = (value) => {
+		const numbers = value.replace(/\D/g, '')
+		if (!numbers) return ''
+
+		if (numbers.length <= 1) return '+7'
+		if (numbers.length <= 4) return `+7 (${numbers.slice(1)}`
+		if (numbers.length <= 7) return `+7 (${numbers.slice(1, 4)}) ${numbers.slice(4)}`
+		if (numbers.length <= 9) return `+7 (${numbers.slice(1, 4)}) ${numbers.slice(4, 7)}-${numbers.slice(7)}`
+		return `+7 (${numbers.slice(1, 4)}) ${numbers.slice(4, 7)}-${numbers.slice(7, 9)}-${numbers.slice(9, 11)}`
+	}
+
 	// Мемоизированная функция обработки изменений
 	const handleInputChange = useCallback((type, value) => {
-		setInputValues(prev => ({ ...prev, [type]: typeof value === 'object' ? value.value : value }))
+		if (type === 'number_phone') {
+			const formattedNumber = formatPhoneNumber(value)
+			setInputValues(prev => ({ ...prev, [type]: formattedNumber }))
+		} else {
+			setInputValues(prev => ({ ...prev, [type]: typeof value === 'object' ? value.value : value }))
+		}
 	}, [])
 
 	// Оптимизированная валидация
 	const validate = useCallback(() => {
-		const emptyField = Object.entries(inputValues).find(([value]) => !String(value).trim())
+		const emptyField = Object.entries(inputValues).find(([key, value]) => {
+			if (key === 'number_phone') {
+				return !value || value.length < 18 // Проверка полного формата телефона
+			}
+			return !String(value).trim()
+		})
 		if (emptyField) {
 			setError(`Поле "${emptyField[0]}" не должно быть пустым.`)
 			return false
@@ -86,6 +108,15 @@ const Create = () => {
 								placeholder,
 								className: 'react-dadata__input'
 							}}
+						/>
+					) : type === 'number_phone' ? (
+						<input
+							type="tel"
+							className="input-field"
+							placeholder={placeholder}
+							value={inputValues[type] || ''}
+							onChange={e => handleInputChange(type, e.target.value)}
+							maxLength={18}
 						/>
 					) : (
 						<input
