@@ -1,7 +1,9 @@
 import './Default.css'
 
 const Default = () => {
-	return <h1>Добро пожаловать на главную страницу 🏠</h1>
+	return <div className="default-container">
+		<h1>Добро пожаловать на главную страницу 🏠</h1>
+	</div>
 }
 
 export default Default
