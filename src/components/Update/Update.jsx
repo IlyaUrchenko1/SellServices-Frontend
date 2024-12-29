@@ -121,7 +121,7 @@ const Update = () => {
   ), [inputs, inputValues, handleInputChange])
 
   return (
-    <div className="update-container">
+    <div className="create-container">
       {formInputs}
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">Данные успешно обновлены!</div>}

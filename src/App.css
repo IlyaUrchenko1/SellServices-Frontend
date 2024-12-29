@@ -2,36 +2,81 @@
 	box-sizing: border-box;
 }
 
-nav {
-	margin-bottom: 20px;
-	margin-top: 10%;
+:root {
+	--primary-color: #5B3C67;
+	--hover-color: #FF8C00;
+	--border-color: #CCC;
+	--shadow-color: rgba(0, 0, 0, 0.15);
+	--error-color: #D8000C;
+	--error-bg-color: #FFBABA;
+	--success-color: #4F8A10;
+	--success-bg-color: #DFF2BF;
+	--font-family: Arial, sans-serif;
 }
 
-a {
-	text-decoration: none;
-	font-weight: bold;
-	font-size: 18px;
-	font-family: Roboto, sans-serif;
-	color: black;
-	text-transform: uppercase;
-	border: black solid 2px;
+.inputs-container {
+	width: 100%;
+	max-width: 500px;
+	margin: 2rem auto;
+	padding: 0 1rem;
+}
+
+.input-wrapper {
+	width: 100%;
+	margin-bottom: 1.5rem;
+	position: relative;
+}
+
+.input-field,
+.react-dadata__input {
+	width: 100%;
+	padding: 0.875rem 1rem;
+	font-size: 1rem;
+	border: 2px solid var(--border-color);
 	border-radius: 8px;
-	padding: 5px;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+	box-sizing: border-box;
 }
 
-li {
-	list-style-type: none;
-	text-align: center;
-	display: inline-block;
-	margin-right: 100px;
+.input-field:focus,
+.react-dadata__input:focus {
+	outline: none;
+	border-color: var(--primary-color);
+	box-shadow: 0 0 5px var(--shadow-color);
 }
 
-li:last-child {
-	margin-right: 0;
+.error-message {
+	color: var(--error-color);
+	background-color: var(--error-bg-color);
+	padding: 0.75rem 1rem;
+	border-radius: 4px;
+	margin-bottom: 1rem;
+	text-align: left;
 }
 
-ul {
-	text-align: center;
-	padding: 0;
-	margin: 0;
+.success-message {
+	color: var(--success-color);
+	background-color: var(--success-bg-color);
+	padding: 0.75rem 1rem;
+	border-radius: 4px;
+	margin-bottom: 1rem;
+	text-align: left;
+}
+
+
+@media (max-width: 768px) {
+	.inputs-container {
+		padding: 0 1.5rem;
+	}
+
+	.input-field,
+	.react-dadata__input {
+		font-size: 1.125rem;
+		padding: 1rem 1.25rem;
+	}
+
+	.update-button {
+		padding: 1.25rem 2.5rem;
+		font-size: 1.25rem;
+	}
 }
