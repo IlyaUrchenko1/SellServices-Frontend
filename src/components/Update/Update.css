@@ -1,0 +1,109 @@
+:root {
+	--primary-color: #5B3C67;
+	--hover-color: #FF8C00;
+	--border-color: #CCC;
+	--shadow-color: rgba(0, 0, 0, 0.15);
+	--error-color: #D8000C;
+	--error-bg-color: #FFBABA;
+	--success-color: #4F8A10;
+	--success-bg-color: #DFF2BF;
+	--font-family: Arial, sans-serif;
+}
+
+.create-container {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	min-height: 100vh;
+	font-family: var(--font-family);
+	text-align: center;
+	padding: 1rem;
+	background-color: #f9f9f9;
+}
+
+.inputs-container {
+	width: 100%;
+	max-width: 500px;
+	margin: 2rem auto;
+	padding: 0 1rem;
+}
+
+.input-wrapper {
+	width: 100%;
+	margin-bottom: 1.5rem;
+	position: relative;
+}
+
+.input-field,
+.react-dadata__input {
+	width: 100%;
+	padding: 0.875rem 1rem;
+	font-size: 1rem;
+	border: 2px solid var(--border-color);
+	border-radius: 8px;
+	transition: border-color 0.2s ease, box-shadow 0.2s ease;
+	box-sizing: border-box;
+}
+
+.input-field:focus,
+.react-dadata__input:focus {
+	outline: none;
+	border-color: var(--primary-color);
+	box-shadow: 0 0 5px var(--shadow-color);
+}
+
+.error-message {
+	color: var(--error-color);
+	background-color: var(--error-bg-color);
+	padding: 0.75rem 1rem;
+	border-radius: 4px;
+	margin-bottom: 1rem;
+	text-align: left;
+}
+
+.success-message {
+	color: var(--success-color);
+	background-color: var(--success-bg-color);
+	padding: 0.75rem 1rem;
+	border-radius: 4px;
+	margin-bottom: 1rem;
+	text-align: left;
+}
+
+.update-button {
+	background-color: var(--primary-color);
+	color: #FFFFFF;
+	border: none;
+	padding: 1rem 2rem;
+	font-size: 1.125rem;
+	border-radius: 8px;
+	cursor: pointer;
+	transition: background-color 0.3s ease, transform 0.3s ease;
+	width: 100%;
+	max-width: 300px;
+}
+
+.update-button:hover {
+	background-color: var(--hover-color);
+}
+
+.update-button:active {
+	transform: translateY(-2px);
+}
+
+@media (max-width: 768px) {
+	.inputs-container {
+		padding: 0 1.5rem;
+	}
+
+	.input-field,
+	.react-dadata__input {
+		font-size: 1.125rem;
+		padding: 1rem 1.25rem;
+	}
+
+	.update-button {
+		padding: 1.25rem 2.5rem;
+		font-size: 1.25rem;
+	}
+}
