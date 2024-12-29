@@ -1,0 +1,5 @@
+/*    /index.html    200
+/*    /create.html   200
+/*    /update.html   200
+/*    /update?name=value   200
+/*    /update?name=value&name2=value2   200
