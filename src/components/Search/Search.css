@@ -1,0 +1,116 @@
+.search-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.city-input-container {
+  position: relative;
+  width: 100%;
+}
+
+.city-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  box-shadow: 0 0 5px var(--shadow-color);
+  max-height: 300px;
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+.city-list-item {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.city-list-item:hover {
+  background-color: #f5f5f5;
+  color: var(--hover-color);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  background: #fff;
+  border: 2px solid var(--border-color);
+  width: 100%;
+}
+
+.checkbox-label:hover {
+  border-color: var(--hover-color);
+  background-color: #f8f9fa;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin-right: 0.75rem;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.checkbox-label input[type="checkbox"]:checked {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.checkbox-label input[type="checkbox"]:checked::after {
+  content: '✓';
+  position: absolute;
+  color: white;
+  font-size: 12px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.search-button {
+  width: 100%;
+  max-width: 200px;
+  padding: 0.875rem 1rem;
+  font-size: 1rem;
+  color: #fff;
+  background-color: var(--primary-color);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  margin-top: 1rem;
+}
+
+.search-button:hover:not(:disabled) {
+  background-color: var(--hover-color);
+}
+
+.search-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .search-button {
+    padding: 1rem 1.25rem;
+    font-size: 1.125rem;
+  }
+}
