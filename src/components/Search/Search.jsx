@@ -19,6 +19,24 @@ const Search = () => {
     cityQuery: ''
   })
 
+  // Инициализация дополнительных полей из URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(search)
+    const params = Array.from(searchParams.entries()).map(([type, placeholder]) => ({
+      type,
+      placeholder,
+      id: `${type}-${Math.random()}`
+    }))
+    setState(prev => ({
+      ...prev,
+      inputs: params,
+      values: {
+        ...prev.values,
+        ...params.reduce((acc, { type }) => ({ ...acc, [type]: '' }), {})
+      }
+    }))
+  }, [search])
+
   const cities = useMemo(() => [
     'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург',
     'Казань', 'Нижний Новгород', 'Челябинск', 'Самара', 'Омск',
@@ -39,10 +57,8 @@ const Search = () => {
     updateState({
       values: {
         ...state.values,
-        // Если выбран новый или старый, то сбрасываем противоположный
         sortNew: sortType === 'new' ? !state.values.sortNew : sortType === 'old' ? false : state.values.sortNew,
         sortOld: sortType === 'old' ? !state.values.sortOld : sortType === 'new' ? false : state.values.sortOld,
-        // Остальные сортировки можно комбинировать
         sortPopular: sortType === 'popular' ? !state.values.sortPopular : state.values.sortPopular
       }
     })
@@ -83,6 +99,16 @@ const Search = () => {
     cities.filter(city => city.toLowerCase().includes(state.cityQuery.toLowerCase())),
     [cities, state.cityQuery]
   )
+
+  const handleInputChange = useCallback((type, value) => {
+    setState(prev => ({
+      ...prev,
+      values: {
+        ...prev.values,
+        [type]: value
+      }
+    }))
+  }, [])
 
   return (
     <div className="search-container">
@@ -162,6 +188,19 @@ const Search = () => {
             Сначала популярные
           </label>
         </div>
+
+        {/* Динамические поля из URL */}
+        {state.inputs.map(({ type, placeholder, id }) => (
+          <div key={id} className="input-wrapper">
+            <input
+              type="text"
+              className="input-field"
+              placeholder={placeholder}
+              value={state.values[type] || ''}
+              onChange={e => handleInputChange(type, e.target.value)}
+            />
+          </div>
+        ))}
       </div>
 
       {state.error && <div className="error-message">{state.error}</div>}
