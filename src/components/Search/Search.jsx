@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AddressSuggestions } from 'react-dadata'
+import 'react-dadata/dist/react-dadata.css'
 import { useLocation } from 'react-router-dom'
 import './Search.css'
 
@@ -8,6 +10,7 @@ const Search = () => {
     inputs: [],
     values: {
       city: '',
+      district: '',
       price: '',
       sortNew: false,
       sortOld: false,
@@ -15,11 +18,9 @@ const Search = () => {
     },
     isSubmitting: false,
     error: null,
-    showCityList: false,
-    cityQuery: ''
+    showDistrict: false
   })
 
-  // Инициализация дополнительных полей из URL
   useEffect(() => {
     const searchParams = new URLSearchParams(search)
     const params = Array.from(searchParams.entries()).map(([type, placeholder]) => ({
@@ -36,13 +37,6 @@ const Search = () => {
       }
     }))
   }, [search])
-
-  const cities = useMemo(() => [
-    'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург',
-    'Казань', 'Нижний Новгород', 'Челябинск', 'Самара', 'Омск',
-    'Ростов-на-Дону', 'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 
-    'Волгоград'
-  ], [])
 
   const priceRanges = useMemo(() => [
     'до 5000 ₽', '5000-10000 ₽', '10000-15000 ₽', '15000-20000 ₽',
@@ -64,20 +58,47 @@ const Search = () => {
     })
   }, [state.values])
 
+  const validateCity = (city) => {
+    if (!city) return false
+    // Очищаем строку от лишних пробелов
+    const trimmedCity = city.trim()
+    // Проверяем минимальную длину
+    if (trimmedCity.length < 2) return false
+    // Проверяем что нет запятых и это одно слово
+    return !trimmedCity.includes(',')
+  }
+
+  const validateDistrict = (district) => {
+    if (!district) return true
+    
+    const parts = district.split(',').map(part => part.trim())
+    if (parts.length !== 2) return false
+
+    // Проверяем каждую часть района на минимальную длину и содержание
+    return parts.every(part => {
+      const cleaned = part.replace(/[^a-zA-Zа-яА-Я0-9\s]/g, '').trim()
+      return cleaned.length >= 2 // Минимум 2 символа для каждой части
+    })
+  }
+
   const handleSearch = useCallback(async () => {
     if (state.isSubmitting) return
-    
+
     updateState({ isSubmitting: true, error: null })
 
     try {
       const searchData = {
-        ...state.values,
-        city: state.values.city?.trim(),
-        price: state.values.price
+        ...state.values
       }
 
-      if (!searchData.city || searchData.city.length < 2) {
-        throw new Error('Выберите город')
+      if (!validateCity(searchData.city)) {
+        updateState({ error: 'Пожалуйста, введите корректное название города (минимум 2 символа, без запятых)' })
+        return
+      }
+
+      if (state.showDistrict && !validateDistrict(searchData.district)) {
+        updateState({ error: 'Пожалуйста, введите район в формате: Город, Район' })
+        return
       }
 
       const tg = window?.Telegram?.WebApp
@@ -92,68 +113,74 @@ const Search = () => {
     } finally {
       updateState({ isSubmitting: false })
     }
-  }, [state.isSubmitting, state.values])
-
-  const filteredCities = useMemo(() => 
-    !state.cityQuery ? cities : 
-    cities.filter(city => city.toLowerCase().includes(state.cityQuery.toLowerCase())),
-    [cities, state.cityQuery]
-  )
+  }, [state.isSubmitting, state.values, state.showDistrict])
 
   const handleInputChange = useCallback((type, value) => {
-    setState(prev => ({
-      ...prev,
-      values: {
-        ...prev.values,
-        [type]: value
-      }
-    }))
+    if (type === 'city') {
+      const cityValue = value.value || ''
+      setState(prev => ({
+        ...prev,
+        values: {
+          ...prev.values,
+          [type]: cityValue,
+          district: !cityValue ? '' : prev.values.district
+        },
+        showDistrict: cityValue.length > 0,
+        error: null
+      }))
+    } else if (type === 'district') {
+      const districtValue = value.value || ''
+      setState(prev => ({
+        ...prev,
+        values: {
+          ...prev.values,
+          [type]: districtValue
+        },
+        error: null
+      }))
+    } else {
+      setState(prev => ({
+        ...prev,
+        values: {
+          ...prev.values,
+          [type]: value
+        },
+        error: null
+      }))
+    }
   }, [])
 
   return (
     <div className="search-container">
       <div className="inputs-container">
         <div className="input-wrapper">
-          <div className="city-input-container">
-            <input
-              type="text"
-              className="input-field"
-              placeholder="Выберите город"
-              value={state.cityQuery}
-              onChange={e => updateState({
-                cityQuery: e.target.value,
-                values: { ...state.values, city: e.target.value },
-                showCityList: true
-              })}
-              onFocus={() => updateState({ showCityList: true })}
+          <AddressSuggestions
+            token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+            value={state.values.city || ''}
+            onChange={(value) => handleInputChange('city', value)}
+            inputProps={{
+              placeholder: "Введите название города",
+              className: 'react-dadata__input'
+            }}
+          />
+          {state.showDistrict && (
+            <AddressSuggestions
+              token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+              value={state.values.district || ''}
+              onChange={(value) => handleInputChange('district', value)}
+              inputProps={{
+                placeholder: "Введите название района",
+                className: 'react-dadata__input'
+              }}
             />
-            {state.showCityList && (
-              <div className="city-list">
-                {filteredCities.map(city => (
-                  <div
-                    key={city}
-                    className="city-list-item"
-                    onClick={() => updateState({
-                      values: { ...state.values, city },
-                      cityQuery: city,
-                      showCityList: false
-                    })}
-                  >
-                    {city}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          )}
         </div>
 
         <div className="input-wrapper">
-          <select 
+          <select
             className="input-field"
             value={state.values.price}
-            onChange={e => updateState({
-              values: { ...state.values, price: e.target.value }
-            })}
+            onChange={e => handleInputChange('price', e.target.value)}
           >
             <option value="">Выберите ценовой диапазон</option>
             {priceRanges.map(range => (
@@ -173,7 +200,7 @@ const Search = () => {
           </label>
           <label className="checkbox-label">
             <input
-              type="checkbox" 
+              type="checkbox"
               checked={state.values.sortOld}
               onChange={() => handleSortChange('old')}
             />
@@ -191,20 +218,22 @@ const Search = () => {
 
         {/* Динамические поля из URL */}
         {state.inputs.map(({ type, placeholder, id }) => (
-          <div key={id} className="input-wrapper">
-            <input
-              type="text"
-              className="input-field"
-              placeholder={placeholder}
-              value={state.values[type] || ''}
-              onChange={e => handleInputChange(type, e.target.value)}
-            />
-          </div>
+          type !== 'city' && type !== 'district' && (
+            <div key={id} className="input-wrapper">
+              <input
+                type="text"
+                className="input-field"
+                placeholder={placeholder}
+                value={state.values[type] || ''}
+                onChange={e => handleInputChange(type, e.target.value)}
+              />
+            </div>
+          )
         ))}
       </div>
 
       {state.error && <div className="error-message">{state.error}</div>}
-      <button 
+      <button
         className="search-button"
         onClick={handleSearch}
         disabled={state.isSubmitting}

@@ -11,14 +11,14 @@ const Create = () => {
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [error, setError] = useState(null)
 	const [success, setSuccess] = useState(false)
+	const [showDistrict, setShowDistrict] = useState(false)
 
-	// Инициализация входных данных из URL с использованием useMemo
 	useEffect(() => {
 		const searchParams = new URLSearchParams(search)
 		const params = Array.from(searchParams.entries()).map(([type, placeholder]) => ({
 			type,
 			placeholder,
-			id: `${type}-${Math.random()}` // Уникальный id для оптимизации рендеринга
+			id: `${type}-${Math.random()}`
 		}))
 		setInputs(params)
 
@@ -26,7 +26,6 @@ const Create = () => {
 		setInputValues(initialValues)
 	}, [search])
 
-	// Форматирование номера телефона
 	const formatPhoneNumber = (value) => {
 		const numbers = value.replace(/\D/g, '')
 		if (!numbers) return ''
@@ -38,33 +37,70 @@ const Create = () => {
 		return `+7 (${numbers.slice(1, 4)}) ${numbers.slice(4, 7)}-${numbers.slice(7, 9)}-${numbers.slice(9, 11)}`
 	}
 
-	// Мемоизированная функция обработки изменений
 	const handleInputChange = useCallback((type, value) => {
 		if (type === 'number_phone') {
 			const formattedNumber = formatPhoneNumber(value)
 			setInputValues(prev => ({ ...prev, [type]: formattedNumber }))
+		} else if (type === 'adress') {
+			const addressValue = value.value || ''
+			setInputValues(prev => ({ ...prev, [type]: addressValue }))
+			setShowDistrict(addressValue.length > 0)
+			if (!addressValue) {
+				setInputValues(prev => ({ ...prev, district: '' }))
+			}
+		} else if (type === 'district') {
+			const districtValue = value.value || ''
+			setInputValues(prev => ({ ...prev, [type]: districtValue }))
 		} else {
 			setInputValues(prev => ({ ...prev, [type]: typeof value === 'object' ? value.value : value }))
 		}
 	}, [])
 
-	// Оптимизированная валидация
+	const validateAddress = (address) => {
+		if (!address) return false
+		const parts = address.split(',').map(part => part.trim())
+		return parts.length === 3 && parts.every(part => part.length > 0)
+	}
+
+	const validateDistrict = (district) => {
+		if (!district) return false
+		const parts = district.split(',').map(part => part.trim())
+		return parts.length === 2 && parts.every(part => part.length > 0)
+	}
+
 	const validate = useCallback(() => {
+		// Проверка на пустые поля
 		const emptyField = Object.entries(inputValues).find(([key, value]) => {
 			if (key === 'number_phone') {
-				return !value || value.length < 18 // Проверка полного формата телефона
+				return !value || value.length < 18
+			}
+			if (key === 'district') {
+				return showDistrict && !String(value).trim()
 			}
 			return !String(value).trim()
 		})
+
 		if (emptyField) {
 			setError(`Поле "${emptyField[0]}" не должно быть пустым.`)
 			return false
 		}
+
+		// Проверка формата адреса
+		if (!validateAddress(inputValues.adress)) {
+			setError('Адрес должен содержать три значения через запятую (Город, улица, дом)')
+			return false
+		}
+
+		// Проверка формата района если он показан
+		if (showDistrict && !validateDistrict(inputValues.district)) {
+			setError('Район должен содержать два значения через запятую (Город, район)')
+			return false
+		}
+
 		setError(null)
 		return true
-	}, [inputValues])
+	}, [inputValues, showDistrict])
 
-	// Оптимизированная отправка данных
 	const handleCreate = useCallback(async () => {
 		if (!validate()) return
 
@@ -77,7 +113,6 @@ const Create = () => {
 				await tg.sendData(jsonData)
 				setSuccess(true)
 			} else {
-				// Fallback для тестирования
 				console.log('Telegram WebApp не доступен, данные:', inputValues)
 				alert(
 					`Данные отправлены:\n${Object.entries(inputValues)
@@ -94,22 +129,34 @@ const Create = () => {
 		}
 	}, [inputValues, validate])
 
-	// Мемоизация компонентов формы
 	const formInputs = useMemo(() => (
 		<div className="inputs-container">
 			{inputs.map(({ type, placeholder, id }) => (
 				<div key={id} className="input-wrapper">
 					{type === 'adress' ? (
-						<AddressSuggestions
-							token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
-							value={inputValues[type] || ''}
-							onChange={(value) => handleInputChange(type, value)}
-							inputProps={{
-								placeholder,
-								className: 'react-dadata__input'
-							}}
-						/>
-					) : type === 'number_phone' ? (
+						<>
+							<AddressSuggestions
+								token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+								value={inputValues[type] || ''}
+								onChange={(value) => handleInputChange(type, value)}
+								inputProps={{
+									placeholder: "Укажите полный адрес (пример: Город, улица, дом)",
+									className: 'react-dadata__input'
+								}}
+							/>
+							{showDistrict && (
+								<AddressSuggestions
+									token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+									value={inputValues.district || ''}
+									onChange={(value) => handleInputChange('district', value)}
+									inputProps={{
+										placeholder: "Укажите район города (пример: Город, район)",
+										className: 'react-dadata__input'
+									}}
+								/>
+							)}
+						</>
+					) : type === 'district' ? null : type === 'number_phone' ? (
 						<input
 							type="tel"
 							className="input-field"
@@ -130,7 +177,7 @@ const Create = () => {
 				</div>
 			))}
 		</div>
-	), [inputs, inputValues, handleInputChange])
+	), [inputs, inputValues, handleInputChange, showDistrict])
 
 	return (
 		<div className="create-container">

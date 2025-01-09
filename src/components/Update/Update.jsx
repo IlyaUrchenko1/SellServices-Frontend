@@ -11,8 +11,8 @@ const Update = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
+  const [showDistrict, setShowDistrict] = useState(false)
 
-  // Инициализация входных данных из URL
   useEffect(() => {
     const searchParams = new URLSearchParams(search)
     const params = Array.from(searchParams.entries()).map(([type, placeholder]) => ({
@@ -26,7 +26,6 @@ const Update = () => {
     setInputValues(initialValues)
   }, [search])
 
-  // Форматирование номера телефона
   const formatPhoneNumber = (value) => {
     const numbers = value.replace(/\D/g, '')
     if (!numbers) return ''
@@ -38,23 +37,98 @@ const Update = () => {
     return `+7 (${numbers.slice(1, 4)}) ${numbers.slice(4, 7)}-${numbers.slice(7, 9)}-${numbers.slice(9, 11)}`
   }
 
-  // Обработка изменений полей
   const handleInputChange = useCallback((type, value) => {
+    setError(null)
+    setSuccess(false)
+
     if (type === 'number_phone') {
       const formattedNumber = formatPhoneNumber(value)
       setInputValues(prev => ({ ...prev, [type]: formattedNumber }))
+    } else if (type === 'adress') {
+      const addressValue = value.value || ''
+      setInputValues(prev => ({ ...prev, [type]: addressValue }))
+      setShowDistrict(addressValue.length > 0)
+      if (!addressValue) {
+        setInputValues(prev => ({ ...prev, district: '' }))
+      }
+    } else if (type === 'district') {
+      const districtValue = value.value || ''
+      setInputValues(prev => ({ ...prev, [type]: districtValue }))
     } else {
       setInputValues(prev => ({ ...prev, [type]: typeof value === 'object' ? value.value : value }))
     }
-    // Сбрасываем ошибку при изменении любого поля
-    setError(null)
   }, [])
 
-  // Отправка данных
+  const validateAddress = (address) => {
+    if (!address) return true // Разрешаем пустой адрес для необязательных полей
+
+    const parts = address.split(',').map(part => part.trim())
+    if (parts.length !== 3) return false
+
+    // Проверяем каждую часть адреса на минимальную длину и содержание
+    return parts.every(part => {
+      const cleaned = part.replace(/[^a-zA-Zа-яА-Я0-9\s]/g, '').trim()
+      return cleaned.length >= 2 // Минимум 2 символа для каждой части
+    })
+  }
+
+  const validateDistrict = (district) => {
+    if (!district) return true // Разрешаем пустой район для необязательных полей
+
+    const parts = district.split(',').map(part => part.trim())
+    if (parts.length !== 2) return false
+
+    // Проверяем каждую часть района на минимальную длину и содержание
+    return parts.every(part => {
+      const cleaned = part.replace(/[^a-zA-Zа-яА-Я0-9\s]/g, '').trim()
+      return cleaned.length >= 2 // Минимум 2 символа для каждой части
+    })
+  }
+
+  const validatePhoneNumber = (phone) => {
+    if (!phone) return true // Разрешаем пустой телефон для необязательных полей
+    const phonePattern = /^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/
+    return phonePattern.test(phone)
+  }
+
+  const validate = useCallback(() => {
+    setSuccess(false)
+    setError(null)
+
+    // Проверяем все поля на корректность формата
+    for (const [fieldType, value] of Object.entries(inputValues)) {
+      if (value) { // Проверяем только заполненные поля
+        if (fieldType === 'adress' && !validateAddress(value)) {
+          setError('Неверный формат адреса. Требуется: Город, улица, дом')
+          return false
+        }
+
+        if (fieldType === 'district' && !validateDistrict(value)) {
+          setError('Неверный формат района. Требуется: Город, район')
+          return false
+        }
+
+        if (fieldType === 'number_phone' && !validatePhoneNumber(value)) {
+          setError('Неверный формат номера телефона')
+          return false
+        }
+      }
+    }
+
+    // Проверяем зависимость district от adress
+    if (inputValues.district && !inputValues.adress) {
+      setError('Нельзя указать район без адреса')
+      return false
+    }
+
+    return true
+  }, [inputValues])
+
   const handleUpdate = useCallback(async () => {
+    if (!validate()) return
+
     setIsSubmitting(true)
     try {
-      // Фильтруем пустые значения перед отправкой
       const filteredValues = Object.fromEntries(
         Object.entries(inputValues).filter(([value]) => value !== '')
       )
@@ -64,40 +138,55 @@ const Update = () => {
 
       if (tg) {
         await tg.sendData(jsonData)
+        setError(null)
         setSuccess(true)
       } else {
-        console.log('Данные для обновления:', filteredValues)
+        console.log('Telegram WebApp не доступен, данные:', filteredValues)
         alert(
           `Данные для обновления:\n${Object.entries(filteredValues)
             .map(([k, v]) => `${k}: ${v}`)
             .join('\n')}`
         )
+        setError(null)
         setSuccess(true)
       }
     } catch (err) {
       console.error('Ошибка при обновлении данных:', err)
+      setSuccess(false)
       setError('Произошла ошибка при обновлении. Попробуйте еще раз.')
     } finally {
       setIsSubmitting(false)
     }
-  }, [inputValues])
+  }, [inputValues, validate])
 
-  // Рендер формы
   const formInputs = useMemo(() => (
     <div className="inputs-container">
       {inputs.map(({ type, placeholder, id }) => (
         <div key={id} className="input-wrapper">
           {type === 'adress' ? (
-            <AddressSuggestions
-              token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
-              value={inputValues[type] || ''}
-              onChange={(value) => handleInputChange(type, value)}
-              inputProps={{
-                placeholder: `${placeholder} (необязательно)`,
-                className: 'react-dadata__input'
-              }}
-            />
-          ) : type === 'number_phone' ? (
+            <>
+              <AddressSuggestions
+                token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+                value={inputValues[type] || ''}
+                onChange={(value) => handleInputChange(type, value)}
+                inputProps={{
+                  placeholder: "Укажите полный адрес (пример: Город, улица, дом)",
+                  className: 'react-dadata__input'
+                }}
+              />
+              {showDistrict && (
+                <AddressSuggestions
+                  token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+                  value={inputValues.district || ''}
+                  onChange={(value) => handleInputChange('district', value)}
+                  inputProps={{
+                    placeholder: "Укажите район города (пример: Город, район)",
+                    className: 'react-dadata__input'
+                  }}
+                />
+              )}
+            </>
+          ) : type === 'district' ? null : type === 'number_phone' ? (
             <input
               type="tel"
               className="input-field"
@@ -118,15 +207,15 @@ const Update = () => {
         </div>
       ))}
     </div>
-  ), [inputs, inputValues, handleInputChange])
+  ), [inputs, inputValues, handleInputChange, showDistrict])
 
   return (
     <div className="create-container">
       {formInputs}
       {error && <div className="error-message">{error}</div>}
-      {success && <div className="success-message">Данные успешно обновлены!</div>}
+      {!error && success && <div className="success-message">Данные успешно обновлены!</div>}
       <button
-        className="update-button"
+        className="create-button"
         onClick={handleUpdate}
         disabled={isSubmitting}
       >
