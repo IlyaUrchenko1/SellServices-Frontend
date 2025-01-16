@@ -11,22 +11,38 @@ const Update = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
-  const [showDistrict, setShowDistrict] = useState(false)
+  const [showCityList, setShowCityList] = useState(false)
+  const [selectedCity, setSelectedCity] = useState('')
+
+  const popularCities = useMemo(() => [
+    'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
+    'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
+    'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград',
+    'Краснодар', 'Саратов', 'Тюмень', 'Тольятти', 'Ижевск',
+    'Барнаул', 'Иркутск', 'Ульяновск', 'Хабаровск', 'Ярославль',
+    'Владивосток', 'Махачкала', 'Томск', 'Оренбург', 'Кемерово',
+    'Новокузнецк', 'Рязань', 'Астрахань', 'Пенза', 'Липецк'
+  ], [])
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(search)
-    const params = Array.from(searchParams.entries()).map(([type, placeholder]) => ({
-      type,
-      placeholder,
-      id: `${type}-${Math.random()}`
-    }))
-    setInputs(params)
+    try {
+      const searchParams = new URLSearchParams(search)
+      const params = Array.from(searchParams.entries()).map(([type, placeholder]) => ({
+        type,
+        placeholder,
+        id: `${type}-${Math.random()}`
+      }))
+      setInputs(params)
 
-    const initialValues = params.reduce((acc, { type }) => ({ ...acc, [type]: '' }), {})
-    setInputValues(initialValues)
+      const initialValues = params.reduce((acc, { type }) => ({ ...acc, [type]: '' }), {})
+      setInputValues({ ...initialValues, city: '', street: '', district: '' })
+    } catch (err) {
+      console.error('Ошибка при инициализации формы:', err)
+      setError('Ошибка при загрузке формы')
+    }
   }, [search])
 
-  const formatPhoneNumber = (value) => {
+  const formatPhoneNumber = useCallback((value) => {
     const numbers = value.replace(/\D/g, '')
     if (!numbers) return ''
 
@@ -35,94 +51,68 @@ const Update = () => {
     if (numbers.length <= 7) return `+7 (${numbers.slice(1, 4)}) ${numbers.slice(4)}`
     if (numbers.length <= 9) return `+7 (${numbers.slice(1, 4)}) ${numbers.slice(4, 7)}-${numbers.slice(7)}`
     return `+7 (${numbers.slice(1, 4)}) ${numbers.slice(4, 7)}-${numbers.slice(7, 9)}-${numbers.slice(9, 11)}`
-  }
-
-  const handleInputChange = useCallback((type, value) => {
-    setError(null)
-    setSuccess(false)
-
-    if (type === 'number_phone') {
-      const formattedNumber = formatPhoneNumber(value)
-      setInputValues(prev => ({ ...prev, [type]: formattedNumber }))
-    } else if (type === 'adress') {
-      const addressValue = value.value || ''
-      setInputValues(prev => ({ ...prev, [type]: addressValue }))
-      setShowDistrict(addressValue.length > 0)
-      if (!addressValue) {
-        setInputValues(prev => ({ ...prev, district: '' }))
-      }
-    } else if (type === 'district') {
-      const districtValue = value.value || ''
-      setInputValues(prev => ({ ...prev, [type]: districtValue }))
-    } else {
-      setInputValues(prev => ({ ...prev, [type]: typeof value === 'object' ? value.value : value }))
-    }
   }, [])
 
-  const validateAddress = (address) => {
-    if (!address) return true // Разрешаем пустой адрес для необязательных полей
+  const handleInputChange = useCallback((type, value) => {
+    try {
+      if (type === 'number_phone') {
+        const formattedNumber = formatPhoneNumber(value)
+        setInputValues(prev => ({ ...prev, [type]: formattedNumber }))
+      } else if (type === 'city') {
+        const cityValue = value.trim()
+        setInputValues(prev => ({ ...prev, city: cityValue }))
+        setSelectedCity(cityValue)
+        setShowCityList(!!cityValue)
+      } else if (type === 'street') {
+        const streetValue = value?.data?.street_with_type || value?.value || ''
+        setInputValues(prev => ({ ...prev, street: streetValue }))
+      } else if (type === 'district') {
+        const districtValue = value?.data?.city_district_with_type || value?.data?.area_with_type || value?.value || ''
+        setInputValues(prev => ({ ...prev, district: districtValue }))
+      } else {
+        const trimmedValue = String(value || '').trim()
+        setInputValues(prev => ({ ...prev, [type]: trimmedValue }))
+      }
+    } catch (err) {
+      console.error('Ошибка при изменении поля:', err)
+    }
+  }, [formatPhoneNumber])
 
-    const parts = address.split(',').map(part => part.trim())
-    if (parts.length !== 3) return false
+  const validateField = useCallback((field, value) => {
+    if (field === 'district') return { isValid: true }
 
-    // Проверяем каждую часть адреса на минимальную длину и содержание
-    return parts.every(part => {
-      const cleaned = part.replace(/[^a-zA-Zа-яА-Я0-9\s]/g, '').trim()
-      return cleaned.length >= 2 // Минимум 2 символа для каждой части
-    })
-  }
+    if (!value || !String(value).trim()) {
+      return { isValid: true } // Все поля необязательны при обновлении
+    }
 
-  const validateDistrict = (district) => {
-    if (!district) return true // Разрешаем пустой район для необязательных полей
-
-    const parts = district.split(',').map(part => part.trim())
-    if (parts.length !== 2) return false
-
-    // Проверяем каждую часть района на минимальную длину и содержание
-    return parts.every(part => {
-      const cleaned = part.replace(/[^a-zA-Zа-яА-Я0-9\s]/g, '').trim()
-      return cleaned.length >= 2 // Минимум 2 символа для каждой части
-    })
-  }
-
-  const validatePhoneNumber = (phone) => {
-    if (!phone) return true // Разрешаем пустой телефон для необязательных полей
-    const phonePattern = /^\+7 \(\d{3}\) \d{3}-\d{2}-\d{2}$/
-    return phonePattern.test(phone)
-  }
-
-  const validate = useCallback(() => {
-    setSuccess(false)
-    setError(null)
-
-    // Проверяем все поля на корректность формата
-    for (const [fieldType, value] of Object.entries(inputValues)) {
-      if (value) { // Проверяем только заполненные поля
-        if (fieldType === 'adress' && !validateAddress(value)) {
-          setError('Неверный формат адреса. Требуется: Город, улица, дом')
-          return false
-        }
-
-        if (fieldType === 'district' && !validateDistrict(value)) {
-          setError('Неверный формат района. Требуется: Город, район')
-          return false
-        }
-
-        if (fieldType === 'number_phone' && !validatePhoneNumber(value)) {
-          setError('Неверный формат номера телефона')
-          return false
-        }
+    if (field === 'number_phone' && value.length !== 18) {
+      return {
+        isValid: false,
+        error: 'Введите корректный номер телефона'
       }
     }
 
-    // Проверяем зависимость district от adress
-    if (inputValues.district && !inputValues.adress) {
-      setError('Нельзя указать район без адреса')
-      return false
+    if (field === 'city' && !popularCities.includes(value)) {
+      return {
+        isValid: false,
+        error: 'Выберите город из списка'
+      }
     }
 
+    return { isValid: true }
+  }, [popularCities])
+
+  const validate = useCallback(() => {
+    for (const field of Object.keys(inputValues)) {
+      const { isValid, error } = validateField(field, inputValues[field])
+      if (!isValid) {
+        setError(error)
+        return false
+      }
+    }
+    setError(null)
     return true
-  }, [inputValues])
+  }, [inputValues, validateField])
 
   const handleUpdate = useCallback(async () => {
     if (!validate()) return
@@ -130,7 +120,7 @@ const Update = () => {
     setIsSubmitting(true)
     try {
       const filteredValues = Object.fromEntries(
-        Object.entries(inputValues).filter(([value]) => value !== '')
+        Object.entries(inputValues).filter(([, value]) => value !== '')
       )
 
       const jsonData = JSON.stringify(filteredValues)
@@ -138,55 +128,129 @@ const Update = () => {
 
       if (tg) {
         await tg.sendData(jsonData)
-        setError(null)
         setSuccess(true)
       } else {
         console.log('Telegram WebApp не доступен, данные:', filteredValues)
         alert(
-          `Данные для обновления:\n${Object.entries(filteredValues)
+          `Данные обновлены:\n${Object.entries(filteredValues)
             .map(([k, v]) => `${k}: ${v}`)
             .join('\n')}`
         )
-        setError(null)
         setSuccess(true)
       }
     } catch (err) {
-      console.error('Ошибка при обновлении данных:', err)
-      setSuccess(false)
+      console.error('Ошибка при отправке данных:', err)
       setError('Произошла ошибка при обновлении. Попробуйте еще раз.')
     } finally {
       setIsSubmitting(false)
     }
   }, [inputValues, validate])
 
+  const toggleCityList = useCallback(() => {
+    setShowCityList(prev => !prev)
+  }, [])
+
   const formInputs = useMemo(() => (
     <div className="inputs-container">
+      {/* Поле выбора города */}
+      <div className="input-wrapper city-input-wrapper">
+        <input
+          type="text"
+          className="input-field"
+          placeholder="Введите город (необязательно)"
+          value={inputValues.city}
+          onChange={e => handleInputChange('city', e.target.value)}
+          onFocus={() => setShowCityList(true)}
+          autoComplete="off"
+        />
+        <button
+          type="button"
+          className="city-dropdown-button"
+          onClick={toggleCityList}
+          aria-label={showCityList ? 'Скрыть список городов' : 'Показать список городов'}
+        >
+          {showCityList ? '▲' : '▼'}
+        </button>
+        {showCityList && (
+          <div className="city-dropdown">
+            {popularCities
+              .filter(city =>
+                popularCities.includes(inputValues.city) ? true :
+                  city.toLowerCase().includes((inputValues.city || '').toLowerCase())
+              )
+              .map(city => (
+                <div
+                  key={city}
+                  className="city-option"
+                  onClick={() => {
+                    handleInputChange('city', city)
+                    setShowCityList(false)
+                  }}
+                >
+                  {city}
+                </div>
+              ))}
+          </div>
+        )}
+      </div>
+
+      {selectedCity && (
+        <div className="input-wrapper">
+          <AddressSuggestions
+            token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+            value={inputValues.street}
+            onChange={(suggestion) => handleInputChange('street', suggestion)}
+            inputProps={{
+              placeholder: "Введите улицу (необязательно)",
+              className: 'react-dadata__input',
+              autoComplete: "off"
+            }}
+            filterLocations={[
+              { city: selectedCity }
+            ]}
+            filterFromBound="street"
+            filterToBound="house"
+            suggestionsLimit={7}
+            minChars={3}
+            renderOption={(suggestion) => {
+              const { street_with_type, house } = suggestion.data
+              return house ? `${street_with_type}, ${house}` : street_with_type
+            }}
+          />
+        </div>
+      )}
+
+      {/* Поле района */}
+      {selectedCity && (
+        <div className="input-wrapper">
+          <AddressSuggestions
+            token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+            value={inputValues.district}
+            onChange={(suggestion) => handleInputChange('district', suggestion)}
+            inputProps={{
+              placeholder: "Введите район (необязательно)",
+              className: 'react-dadata__input',
+              autoComplete: "off"
+            }}
+            filterLocations={[
+              { city: selectedCity }
+            ]}
+            filterFromBound="city_district"
+            filterToBound="city_district"
+            suggestionsLimit={7}
+            minChars={2}
+            renderOption={(suggestion) => {
+              const district = suggestion.data.city_district_with_type || suggestion.data.area_with_type
+              return district || 'Район не найден'
+            }}
+          />
+        </div>
+      )}
+
+      {/* Телефон и дополнительные поля */}
       {inputs.map(({ type, placeholder, id }) => (
         <div key={id} className="input-wrapper">
-          {type === 'adress' ? (
-            <>
-              <AddressSuggestions
-                token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
-                value={inputValues[type] || ''}
-                onChange={(value) => handleInputChange(type, value)}
-                inputProps={{
-                  placeholder: "Укажите полный адрес (пример: Город, улица, дом)",
-                  className: 'react-dadata__input'
-                }}
-              />
-              {showDistrict && (
-                <AddressSuggestions
-                  token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
-                  value={inputValues.district || ''}
-                  onChange={(value) => handleInputChange('district', value)}
-                  inputProps={{
-                    placeholder: "Укажите район города (пример: Город, район)",
-                    className: 'react-dadata__input'
-                  }}
-                />
-              )}
-            </>
-          ) : type === 'district' ? null : type === 'number_phone' ? (
+          {type === 'number_phone' ? (
             <input
               type="tel"
               className="input-field"
@@ -194,6 +258,7 @@ const Update = () => {
               value={inputValues[type] || ''}
               onChange={e => handleInputChange(type, e.target.value)}
               maxLength={18}
+              autoComplete="tel"
             />
           ) : (
             <input
@@ -202,18 +267,19 @@ const Update = () => {
               placeholder={`${placeholder} (необязательно)`}
               value={inputValues[type] || ''}
               onChange={e => handleInputChange(type, e.target.value)}
+              autoComplete="off"
             />
           )}
         </div>
       ))}
     </div>
-  ), [inputs, inputValues, handleInputChange, showDistrict])
+  ), [inputs, inputValues, handleInputChange, showCityList, selectedCity, toggleCityList, popularCities])
 
   return (
     <div className="create-container">
       {formInputs}
       {error && <div className="error-message">{error}</div>}
-      {!error && success && <div className="success-message">Данные успешно обновлены!</div>}
+      {success && <div className="success-message">Данные успешно обновлены!</div>}
       <button
         className="create-button"
         onClick={handleUpdate}

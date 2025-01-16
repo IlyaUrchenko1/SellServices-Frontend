@@ -11,6 +11,7 @@ const Search = () => {
     values: {
       city: '',
       district: '',
+      street: '',
       price: '',
       sortNew: false,
       sortOld: false,
@@ -18,8 +19,17 @@ const Search = () => {
     },
     isSubmitting: false,
     error: null,
+    showCityList: false,
+    selectedCity: '',
     showDistrict: false
   })
+
+  const popularCities = useMemo(() => [
+    'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
+    'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
+    'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград',
+    'Краснодар', 'Саратов', 'Тюмень', 'Тольятти', 'Ижевск'
+  ], [])
 
   useEffect(() => {
     const searchParams = new URLSearchParams(search)
@@ -58,83 +68,37 @@ const Search = () => {
     })
   }, [state.values])
 
-  const validateCity = (city) => {
-    if (!city) return false
-    // Очищаем строку от лишних пробелов
-    const trimmedCity = city.trim()
-    // Проверяем минимальную длину
-    if (trimmedCity.length < 2) return false
-    // Проверяем что нет запятых и это одно слово
-    return !trimmedCity.includes(',')
-  }
-
-  const validateDistrict = (district) => {
-    if (!district) return true
-    
-    const parts = district.split(',').map(part => part.trim())
-    if (parts.length !== 2) return false
-
-    // Проверяем каждую часть района на минимальную длину и содержание
-    return parts.every(part => {
-      const cleaned = part.replace(/[^a-zA-Zа-яА-Я0-9\s]/g, '').trim()
-      return cleaned.length >= 2 // Минимум 2 символа для каждой части
-    })
-  }
-
-  const handleSearch = useCallback(async () => {
-    if (state.isSubmitting) return
-
-    updateState({ isSubmitting: true, error: null })
-
-    try {
-      const searchData = {
-        ...state.values
-      }
-
-      if (!validateCity(searchData.city)) {
-        updateState({ error: 'Пожалуйста, введите корректное название города (минимум 2 символа, без запятых)' })
-        return
-      }
-
-      if (state.showDistrict && !validateDistrict(searchData.district)) {
-        updateState({ error: 'Пожалуйста, введите район в формате: Город, Район' })
-        return
-      }
-
-      const tg = window?.Telegram?.WebApp
-      if (tg) {
-        await tg.sendData(JSON.stringify(searchData))
-      } else {
-        console.log('Поиск:', searchData)
-        alert(JSON.stringify(searchData, null, 2))
-      }
-    } catch (err) {
-      updateState({ error: err.message || 'Ошибка поиска' })
-    } finally {
-      updateState({ isSubmitting: false })
-    }
-  }, [state.isSubmitting, state.values, state.showDistrict])
-
   const handleInputChange = useCallback((type, value) => {
     if (type === 'city') {
-      const cityValue = value.value || ''
+      const cityValue = value.trim()
       setState(prev => ({
         ...prev,
         values: {
           ...prev.values,
-          [type]: cityValue,
+          city: cityValue,
           district: !cityValue ? '' : prev.values.district
         },
-        showDistrict: cityValue.length > 0,
+        selectedCity: cityValue,
+        showCityList: !!cityValue,
+        error: null
+      }))
+    } else if (type === 'street') {
+      const streetValue = value?.data?.street_with_type || value?.value || ''
+      setState(prev => ({
+        ...prev,
+        values: {
+          ...prev.values,
+          street: streetValue
+        },
         error: null
       }))
     } else if (type === 'district') {
-      const districtValue = value.value || ''
+      const districtValue = value?.data?.city_district_with_type || value?.data?.area_with_type || value?.value || ''
       setState(prev => ({
         ...prev,
         values: {
           ...prev.values,
-          [type]: districtValue
+          district: districtValue
         },
         error: null
       }))
@@ -150,32 +114,128 @@ const Search = () => {
     }
   }, [])
 
+  const toggleCityList = useCallback(() => {
+    setState(prev => ({
+      ...prev,
+      showCityList: !prev.showCityList
+    }))
+  }, [])
+
+  const handleSearch = useCallback(async () => {
+    if (state.isSubmitting) return
+
+    updateState({ isSubmitting: true, error: null })
+
+    try {
+      const searchData = {
+        ...state.values
+      }
+
+      const tg = window?.Telegram?.WebApp
+      if (tg) {
+        await tg.sendData(JSON.stringify(searchData))
+      } else {
+        console.log('Поиск:', searchData)
+        alert(JSON.stringify(searchData, null, 2))
+      }
+    } catch (err) {
+      updateState({ error: err.message || 'Ошибка поиска' })
+    } finally {
+      updateState({ isSubmitting: false })
+    }
+  }, [state.isSubmitting, state.values])
+
   return (
     <div className="search-container">
       <div className="inputs-container">
-        <div className="input-wrapper">
-          <AddressSuggestions
-            token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
-            value={state.values.city || ''}
-            onChange={(value) => handleInputChange('city', value)}
-            inputProps={{
-              placeholder: "Введите название города",
-              className: 'react-dadata__input'
-            }}
+        {/* Поле выбора города */}
+        <div className="input-wrapper city-input-wrapper">
+          <input
+            type="text"
+            className="input-field"
+            placeholder="Введите город"
+            value={state.values.city}
+            onChange={e => handleInputChange('city', e.target.value)}
+            onFocus={() => setState(prev => ({ ...prev, showCityList: true }))}
+            autoComplete="off"
           />
-          {state.showDistrict && (
-            <AddressSuggestions
-              token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
-              value={state.values.district || ''}
-              onChange={(value) => handleInputChange('district', value)}
-              inputProps={{
-                placeholder: "Введите название района",
-                className: 'react-dadata__input'
-              }}
-            />
+          <button
+            type="button"
+            className="city-dropdown-button"
+            onClick={toggleCityList}
+            aria-label={state.showCityList ? 'Скрыть список городов' : 'Показать список городов'}
+          >
+            {state.showCityList ? '▲' : '▼'}
+          </button>
+          {state.showCityList && (
+            <div className="city-dropdown">
+              {popularCities
+                .filter(city =>
+                  city.toLowerCase().includes((state.values.city || '').toLowerCase())
+                )
+                .map(city => (
+                  <div
+                    key={city}
+                    className="city-option"
+                    onClick={() => {
+                      handleInputChange('city', city)
+                      setState(prev => ({ ...prev, showCityList: false }))
+                    }}
+                  >
+                    {city}
+                  </div>
+                ))}
+            </div>
           )}
         </div>
 
+        {/* Поле улицы */}
+        {state.selectedCity && (
+          <div className="input-wrapper">
+            <AddressSuggestions
+              token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+              value={state.values.street}
+              onChange={(suggestion) => handleInputChange('street', suggestion)}
+              inputProps={{
+                placeholder: "Введите улицу (необязательно)",
+                className: 'react-dadata__input',
+                autoComplete: "off"
+              }}
+              filterLocations={[
+                { city: state.selectedCity }
+              ]}
+              filterFromBound="street"
+              filterToBound="house"
+              suggestionsLimit={7}
+              minChars={3}
+            />
+          </div>
+        )}
+
+        {/* Поле района */}
+        {state.selectedCity && (
+          <div className="input-wrapper">
+            <AddressSuggestions
+              token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+              value={state.values.district}
+              onChange={(suggestion) => handleInputChange('district', suggestion)}
+              inputProps={{
+                placeholder: "Введите район (необязательно)",
+                className: 'react-dadata__input',
+                autoComplete: "off"
+              }}
+              filterLocations={[
+                { city: state.selectedCity }
+              ]}
+              filterFromBound="city_district"
+              filterToBound="city_district"
+              suggestionsLimit={7}
+              minChars={2}
+            />
+          </div>
+        )}
+
+        {/* Поле цены */}
         <div className="input-wrapper">
           <select
             className="input-field"
@@ -189,6 +249,7 @@ const Search = () => {
           </select>
         </div>
 
+        {/* Чекбоксы сортировки */}
         <div className="input-wrapper">
           <label className="checkbox-label">
             <input
@@ -218,7 +279,7 @@ const Search = () => {
 
         {/* Динамические поля из URL */}
         {state.inputs.map(({ type, placeholder, id }) => (
-          type !== 'city' && type !== 'district' && (
+          !['city', 'district', 'street'].includes(type) && (
             <div key={id} className="input-wrapper">
               <input
                 type="text"

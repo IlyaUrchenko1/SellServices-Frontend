@@ -1,31 +1,123 @@
     .create-button {
-    	background-color: var(--primary-color);
-    	color: #FFFFFF;
-    	border: none;
-    	padding: 1rem 2rem;
-    	font-size: 1.125rem;
-    	border-radius: 8px;
-    	cursor: pointer;
-    	transition: background-color 0.3s ease, transform 0.3s ease;
-    	width: 100%;
-    	max-width: 300px;
+        background-color: var(--primary-color);
+        color: #FFFFFF;
+        border: none;
+        padding: 1rem 2rem;
+        font-size: 1.125rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.3s ease;
+        width: 100%;
+        max-width: 300px;
+        margin-top: 1rem;
     }
 
     .create-button:hover {
-    	background-color: var(--hover-color);
+        background-color: var(--hover-color);
     }
 
     .create-button:active {
-    	transform: translateY(-2px);
+        transform: translateY(-2px);
+    }
+
+    .create-button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
     }
 
     .create-container {
-    	display: flex;
-    	flex-direction: column;
-    	align-items: center;
-    	min-height: 100vh;
-    	font-family: var(--font-family);
-    	text-align: center;
-    	padding: 1rem;
-    	background-color: #f9f9f9;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        font-family: var(--font-family);
+        text-align: center;
+        padding: 1rem;
+        background-color: #f9f9f9;
+    }
+
+    .inputs-container {
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+    }
+
+    .input-wrapper {
+        margin-bottom: 1rem;
+        width: 100%;
+    }
+
+    .input-field {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    .input-field:focus {
+        outline: none;
+        border-color: var(--primary-color);
+    }
+
+    .city-input-wrapper {
+        position: relative;
+    }
+
+    .city-dropdown-button {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--primary-color);
+    }
+
+    .city-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 2px 4px var(--shadow-color);
+    }
+
+    .city-option {
+        padding: 8px 12px;
+        cursor: pointer;
+        text-align: left;
+    }
+
+    .city-option:hover {
+        background-color: #f0f0f0;
+    }
+
+    .error-message {
+        color: #dc3545;
+        margin: 1rem 0;
+    }
+
+    .success-message {
+        color: #28a745;
+        margin: 1rem 0;
+    }
+
+    .react-dadata__input {
+        width: 100%;
+        padding: 0.75rem;
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 1rem;
+    }
+
+    .react-dadata__input:focus {
+        outline: none;
+        border-color: var(--primary-color);
     }
