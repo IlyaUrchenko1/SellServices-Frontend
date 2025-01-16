@@ -7,12 +7,21 @@ import './Create.css'
 const Create = () => {
 	const { search } = useLocation()
 	const [inputs, setInputs] = useState([])
-	const [inputValues, setInputValues] = useState({})
+	const [inputValues, setInputValues] = useState({
+		city: '',
+		street: '',
+		district: '',
+		house: '',
+		number_phone: ''
+	})
 	const [isSubmitting, setIsSubmitting] = useState(false)
 	const [error, setError] = useState(null)
 	const [success, setSuccess] = useState(false)
 	const [showCityList, setShowCityList] = useState(false)
 	const [selectedCity, setSelectedCity] = useState('')
+	const [streetSuggestion, setStreetSuggestion] = useState(null)
+	const [districtSuggestion, setDistrictSuggestion] = useState(null)
+	const [isFormValid, setIsFormValid] = useState(false)
 
 	const popularCities = useMemo(() => [
 		'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
@@ -35,12 +44,34 @@ const Create = () => {
 			setInputs(params)
 
 			const initialValues = params.reduce((acc, { type }) => ({ ...acc, [type]: '' }), {})
-			setInputValues({ ...initialValues, city: '', street: '', district: '' })
+			setInputValues(prev => ({ ...prev, ...initialValues }))
 		} catch (err) {
 			console.error('Ошибка при инициализации формы:', err)
 			setError('Ошибка при загрузке формы')
 		}
 	}, [search])
+
+	useEffect(() => {
+		const validateForm = () => {
+			const requiredFields = [
+				'city',
+				'street',
+				'number_phone',
+				'price',
+				'rooms'
+			]
+
+			const isValid = requiredFields.every(field => {
+				const value = inputValues[field]
+				const fieldValid = value && value.trim().length > 0
+				return field === 'district' || fieldValid
+			})
+
+			setIsFormValid(isValid)
+		}
+
+		validateForm()
+	}, [inputValues])
 
 	const formatPhoneNumber = useCallback((value) => {
 		const numbers = value.replace(/\D/g, '')
@@ -60,14 +91,30 @@ const Create = () => {
 				setInputValues(prev => ({ ...prev, [type]: formattedNumber }))
 			} else if (type === 'city') {
 				const cityValue = value.trim()
-				setInputValues(prev => ({ ...prev, city: cityValue }))
+				setInputValues(prev => ({
+					...prev,
+					city: cityValue,
+					street: '',
+					district: '',
+					house: ''
+				}))
 				setSelectedCity(cityValue)
 				setShowCityList(!!cityValue)
+				setStreetSuggestion(null)
+				setDistrictSuggestion(null)
 			} else if (type === 'street') {
-				const streetValue = value?.data?.street_with_type || value?.value || ''
-				setInputValues(prev => ({ ...prev, street: streetValue }))
+				setStreetSuggestion(value)
+				const streetValue = value?.data?.street_with_type || ''
+				const houseValue = value?.data?.house || ''
+				const fullStreet = houseValue ? `${streetValue}, ${houseValue}` : streetValue
+				setInputValues(prev => ({
+					...prev,
+					street: fullStreet,
+					house: houseValue
+				}))
 			} else if (type === 'district') {
-				const districtValue = value?.data?.city_district_with_type || value?.data?.area_with_type || value?.value || ''
+				setDistrictSuggestion(value)
+				const districtValue = value?.data?.city_district_with_type || value?.data?.area_with_type || ''
 				setInputValues(prev => ({ ...prev, district: districtValue }))
 			} else {
 				const trimmedValue = String(value || '').trim()
@@ -78,52 +125,11 @@ const Create = () => {
 		}
 	}, [formatPhoneNumber])
 
-	const validateField = useCallback((field, value) => {
-		if (field === 'district') return { isValid: true }
-
-		if (!value || !String(value).trim()) {
-			const fieldNames = {
-				city: 'Город',
-				street: 'Улица',
-				number_phone: 'Телефон'
-			}
-			return {
-				isValid: false,
-				error: `Поле "${fieldNames[field] || field}" обязательно для заполнения`
-			}
-		}
-
-		if (field === 'number_phone' && value.length !== 18) {
-			return {
-				isValid: false,
-				error: 'Введите корректный номер телефона'
-			}
-		}
-
-		if (field === 'city' && !popularCities.includes(value)) {
-			return {
-				isValid: false,
-				error: 'Выберите город из списка'
-			}
-		}
-
-		return { isValid: true }
-	}, [popularCities])
-
-	const validate = useCallback(() => {
-		for (const field of Object.keys(inputValues)) {
-			const { isValid, error } = validateField(field, inputValues[field])
-			if (!isValid) {
-				setError(error)
-				return false
-			}
-		}
-		setError(null)
-		return true
-	}, [inputValues, validateField])
-
 	const handleCreate = useCallback(async () => {
-		if (!validate()) return
+		if (!isFormValid) {
+			setError('Пожалуйста, заполните все обязательные поля')
+			return
+		}
 
 		setIsSubmitting(true)
 		try {
@@ -139,21 +145,21 @@ const Create = () => {
 				await tg.sendData(jsonData)
 				setSuccess(true)
 			} else {
-				console.log('Telegram WebApp не доступен, данные:', dataToSend)
+				console.warn('⚠️ Telegram WebApp не доступен, данные будут показаны в alert')
 				alert(
-					`Данные отправлены:\n${Object.entries(dataToSend)
+					`Данные для отправки:\n${Object.entries(dataToSend)
 						.map(([k, v]) => `${k}: ${v}`)
 						.join('\n')}`
 				)
 				setSuccess(true)
 			}
 		} catch (err) {
-			console.error('Ошибка при отправке данных:', err)
+			console.error('❌ Ошибка при отправке данных:', err)
 			setError('Произошла ошибка при отправке данных. Попробуйте еще раз.')
 		} finally {
 			setIsSubmitting(false)
 		}
-	}, [inputValues, validate])
+	}, [inputValues, isFormValid])
 
 	const toggleCityList = useCallback(() => {
 		setShowCityList(prev => !prev)
@@ -161,7 +167,6 @@ const Create = () => {
 
 	const formInputs = useMemo(() => (
 		<div className="inputs-container">
-			{/* Поле выбора города */}
 			<div className="input-wrapper city-input-wrapper">
 				<input
 					type="text"
@@ -170,7 +175,6 @@ const Create = () => {
 					value={inputValues.city}
 					onChange={e => handleInputChange('city', e.target.value)}
 					onFocus={() => setShowCityList(true)}
-					required
 					autoComplete="off"
 				/>
 				<button
@@ -204,17 +208,15 @@ const Create = () => {
 				)}
 			</div>
 
-			{/* Поле улицы */}
 			{selectedCity && (
 				<div className="input-wrapper">
 					<AddressSuggestions
 						token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
-						value={inputValues.street}
+						value={streetSuggestion}
 						onChange={(suggestion) => handleInputChange('street', suggestion)}
 						inputProps={{
 							placeholder: "Введите улицу",
 							className: 'react-dadata__input',
-							required: true,
 							autoComplete: "off"
 						}}
 						filterLocations={[
@@ -223,7 +225,7 @@ const Create = () => {
 						filterFromBound="street"
 						filterToBound="house"
 						suggestionsLimit={7}
-						minChars={3}
+						minChars={1}
 						renderOption={(suggestion) => {
 							const { street_with_type, house } = suggestion.data
 							return house ? `${street_with_type}, ${house}` : street_with_type
@@ -232,12 +234,11 @@ const Create = () => {
 				</div>
 			)}
 
-			{/* Поле района */}
 			{selectedCity && (
 				<div className="input-wrapper">
 					<AddressSuggestions
 						token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
-						value={inputValues.district}
+						value={districtSuggestion}
 						onChange={(suggestion) => handleInputChange('district', suggestion)}
 						inputProps={{
 							placeholder: "Введите район (необязательно)",
@@ -250,7 +251,7 @@ const Create = () => {
 						filterFromBound="city_district"
 						filterToBound="city_district"
 						suggestionsLimit={7}
-						minChars={2}
+						minChars={1}
 						renderOption={(suggestion) => {
 							const district = suggestion.data.city_district_with_type || suggestion.data.area_with_type
 							return district || 'Район не найден'
@@ -259,7 +260,6 @@ const Create = () => {
 				</div>
 			)}
 
-			{/* Телефон и дополнительные поля */}
 			{inputs.map(({ type, placeholder, id }) => (
 				<div key={id} className="input-wrapper">
 					{type === 'number_phone' ? (
@@ -267,10 +267,9 @@ const Create = () => {
 							type="tel"
 							className="input-field"
 							placeholder={placeholder}
-							value={inputValues[type] || ''}
+							value={inputValues[type]}
 							onChange={e => handleInputChange(type, e.target.value)}
 							maxLength={18}
-							required
 							autoComplete="tel"
 						/>
 					) : (
@@ -278,23 +277,15 @@ const Create = () => {
 							type="text"
 							className="input-field"
 							placeholder={placeholder}
-							value={inputValues[type] || ''}
+							value={inputValues[type]}
 							onChange={e => handleInputChange(type, e.target.value)}
-							required
 							autoComplete="off"
 						/>
 					)}
 				</div>
 			))}
 		</div>
-	), [inputs, inputValues, handleInputChange, showCityList, selectedCity, toggleCityList, popularCities])
-
-	const isFormValid = useMemo(() => {
-		return Object.entries(inputValues).every(([field, value]) => {
-			const { isValid } = validateField(field, value)
-			return isValid
-		})
-	}, [inputValues, validateField])
+	), [inputs, inputValues, handleInputChange, showCityList, selectedCity, toggleCityList, popularCities, streetSuggestion, districtSuggestion])
 
 	return (
 		<div className="create-container">

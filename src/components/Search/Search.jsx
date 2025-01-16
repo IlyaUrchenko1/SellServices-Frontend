@@ -21,7 +21,8 @@ const Search = () => {
     error: null,
     showCityList: false,
     selectedCity: '',
-    showDistrict: false
+    showDistrict: false,
+    isFormValid: false
   })
 
   const popularCities = useMemo(() => [
@@ -47,6 +48,35 @@ const Search = () => {
       }
     }))
   }, [search])
+
+  useEffect(() => {
+    const validateForm = () => {
+      // Обязательные поля для поиска
+      const requiredFields = [
+        'city'
+      ]
+
+      // Проверяем обязательные поля
+      const isValid = requiredFields.every(field => {
+        const value = state.values[field]
+        return value && value.trim().length > 0
+      })
+
+      // Проверяем что выбран хотя бы один тип сортировки если они используются
+      const hasSortingSelected = state.values.sortNew || state.values.sortOld || state.values.sortPopular
+
+      // Проверяем корректность ценового диапазона если он указан
+      const isPriceValid = !state.values.price || priceRanges.includes(state.values.price)
+
+      // Обновляем состояние валидности формы
+      setState(prev => ({
+        ...prev,
+        isFormValid: isValid && isPriceValid && (!hasSortingSelected || hasSortingSelected)
+      }))
+    }
+
+    validateForm()
+  }, [state.values])
 
   const priceRanges = useMemo(() => [
     'до 5000 ₽', '5000-10000 ₽', '10000-15000 ₽', '15000-20000 ₽',
@@ -76,7 +106,8 @@ const Search = () => {
         values: {
           ...prev.values,
           city: cityValue,
-          district: !cityValue ? '' : prev.values.district
+          district: !cityValue ? '' : prev.values.district,
+          street: !cityValue ? '' : prev.values.street
         },
         selectedCity: cityValue,
         showCityList: !!cityValue,
@@ -124,11 +155,18 @@ const Search = () => {
   const handleSearch = useCallback(async () => {
     if (state.isSubmitting) return
 
+    if (!state.isFormValid) {
+      updateState({ error: 'Пожалуйста, заполните обязательные поля корректно' })
+      return
+    }
+
     updateState({ isSubmitting: true, error: null })
 
     try {
       const searchData = {
-        ...state.values
+        ...state.values,
+        district: state.values.district || 'Не указан',
+        street: state.values.street || 'Не указана'
       }
 
       const tg = window?.Telegram?.WebApp
@@ -143,7 +181,7 @@ const Search = () => {
     } finally {
       updateState({ isSubmitting: false })
     }
-  }, [state.isSubmitting, state.values])
+  }, [state.isSubmitting, state.values, state.isFormValid])
 
   return (
     <div className="search-container">
@@ -297,7 +335,7 @@ const Search = () => {
       <button
         className="search-button"
         onClick={handleSearch}
-        disabled={state.isSubmitting}
+        disabled={state.isSubmitting || !state.isFormValid}
       >
         {state.isSubmitting ? 'Поиск...' : 'Найти'}
       </button>
