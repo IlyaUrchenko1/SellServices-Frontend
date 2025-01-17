@@ -4,34 +4,44 @@ import 'react-dadata/dist/react-dadata.css'
 import { useLocation } from 'react-router-dom'
 import './Search.css'
 
+const INITIAL_STATE = {
+  inputs: [],
+  values: {
+    city: '',
+    district: '',
+    street: '',
+    price: '',
+    sortNew: false,
+    sortOld: false,
+    sortPopular: false
+  },
+  isSubmitting: false,
+  error: null,
+  showCityList: false,
+  selectedCity: '',
+  showDistrict: false,
+  isFormValid: true // Всегда валидная форма
+}
+
+const PRICE_RANGES = [
+  'до 5000 ₽', '5000-10000 ₽', '10000-15000 ₽', '15000-20000 ₽',
+  '20000-25000 ₽', '25000-30000 ₽', '30000-35000 ₽', 'от 35000 ₽'
+]
+
+const POPULAR_CITIES = [
+  'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
+  'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
+  'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград',
+  'Краснодар', 'Саратов', 'Тюмень', 'Тольятти', 'Ижевск'
+]
+
+const DADATA_TOKEN = '9db66acc64262b755a6cbde8bb766248ccdd3d87'
+
 const Search = () => {
   const { search } = useLocation()
-  const [state, setState] = useState({
-    inputs: [],
-    values: {
-      city: '',
-      district: '',
-      street: '',
-      price: '',
-      sortNew: false,
-      sortOld: false,
-      sortPopular: false
-    },
-    isSubmitting: false,
-    error: null,
-    showCityList: false,
-    selectedCity: '',
-    showDistrict: false,
-    isFormValid: false
-  })
+  const [state, setState] = useState(INITIAL_STATE)
 
-  const popularCities = useMemo(() => [
-    'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
-    'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
-    'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград',
-    'Краснодар', 'Саратов', 'Тюмень', 'Тольятти', 'Ижевск'
-  ], [])
-
+  // Инициализация параметров из URL
   useEffect(() => {
     const searchParams = new URLSearchParams(search)
     const params = Array.from(searchParams.entries()).map(([type, placeholder]) => ({
@@ -39,6 +49,7 @@ const Search = () => {
       placeholder,
       id: `${type}-${Math.random()}`
     }))
+
     setState(prev => ({
       ...prev,
       inputs: params,
@@ -49,100 +60,67 @@ const Search = () => {
     }))
   }, [search])
 
-  useEffect(() => {
-    const validateForm = () => {
-      // Обязательные поля для поиска
-      const requiredFields = [
-        'city'
-      ]
-
-      // Проверяем обязательные поля
-      const isValid = requiredFields.every(field => {
-        const value = state.values[field]
-        return value && value.trim().length > 0
-      })
-
-      // Проверяем что выбран хотя бы один тип сортировки если они используются
-      const hasSortingSelected = state.values.sortNew || state.values.sortOld || state.values.sortPopular
-
-      // Проверяем корректность ценового диапазона если он указан
-      const isPriceValid = !state.values.price || priceRanges.includes(state.values.price)
-
-      // Обновляем состояние валидности формы
-      setState(prev => ({
-        ...prev,
-        isFormValid: isValid && isPriceValid && (!hasSortingSelected || hasSortingSelected)
-      }))
-    }
-
-    validateForm()
-  }, [state.values])
-
-  const priceRanges = useMemo(() => [
-    'до 5000 ₽', '5000-10000 ₽', '10000-15000 ₽', '15000-20000 ₽',
-    '20000-25000 ₽', '25000-30000 ₽', '30000-35000 ₽', 'от 35000 ₽'
-  ], [])
-
   const updateState = useCallback((updates) => {
     setState(prev => ({ ...prev, ...updates }))
   }, [])
 
   const handleSortChange = useCallback((sortType) => {
-    updateState({
+    setState(prev => ({
+      ...prev,
       values: {
-        ...state.values,
-        sortNew: sortType === 'new' ? !state.values.sortNew : sortType === 'old' ? false : state.values.sortNew,
-        sortOld: sortType === 'old' ? !state.values.sortOld : sortType === 'new' ? false : state.values.sortOld,
-        sortPopular: sortType === 'popular' ? !state.values.sortPopular : state.values.sortPopular
+        ...prev.values,
+        sortNew: sortType === 'new' ? !prev.values.sortNew : sortType === 'old' ? false : prev.values.sortNew,
+        sortOld: sortType === 'old' ? !prev.values.sortOld : sortType === 'new' ? false : prev.values.sortOld,
+        sortPopular: sortType === 'popular' ? !prev.values.sortPopular : prev.values.sortPopular
       }
-    })
-  }, [state.values])
+    }))
+  }, [])
 
   const handleInputChange = useCallback((type, value) => {
-    if (type === 'city') {
-      const cityValue = value.trim()
-      setState(prev => ({
-        ...prev,
-        values: {
-          ...prev.values,
-          city: cityValue,
-          district: !cityValue ? '' : prev.values.district,
-          street: !cityValue ? '' : prev.values.street
-        },
-        selectedCity: cityValue,
-        showCityList: !!cityValue,
-        error: null
-      }))
-    } else if (type === 'street') {
-      const streetValue = value?.data?.street_with_type || value?.value || ''
-      setState(prev => ({
-        ...prev,
-        values: {
-          ...prev.values,
-          street: streetValue
-        },
-        error: null
-      }))
-    } else if (type === 'district') {
-      const districtValue = value?.data?.city_district_with_type || value?.data?.area_with_type || value?.value || ''
-      setState(prev => ({
-        ...prev,
-        values: {
-          ...prev.values,
-          district: districtValue
-        },
-        error: null
-      }))
-    } else {
-      setState(prev => ({
-        ...prev,
-        values: {
-          ...prev.values,
-          [type]: value
-        },
-        error: null
-      }))
-    }
+    setState(prev => {
+      const newState = { ...prev }
+
+      switch (type) {
+        case 'city': {
+          const cityValue = typeof value === 'string' ? value.trim() : ''
+          newState.values = {
+            ...prev.values,
+            city: cityValue,
+            district: cityValue ? prev.values.district : '',
+            street: cityValue ? prev.values.street : ''
+          }
+          newState.selectedCity = cityValue
+          newState.showCityList = !!cityValue
+          break
+        }
+
+        case 'street': {
+          newState.values = {
+            ...prev.values,
+            street: value?.data?.street_with_type || value?.value || ''
+          }
+          break
+        }
+
+        case 'district': {
+          newState.values = {
+            ...prev.values,
+            district: value?.data?.city_district_with_type || value?.data?.area_with_type || value?.value || ''
+          }
+          break
+        }
+
+        default: {
+          newState.values = {
+            ...prev.values,
+            [type]: value
+          }
+        }
+      }
+
+      newState.error = null
+      return newState
+    })
   }, [])
 
   const toggleCityList = useCallback(() => {
@@ -153,10 +131,7 @@ const Search = () => {
   }, [])
 
   const handleSearch = useCallback(async () => {
-    if (state.isSubmitting) return
-
-    if (!state.isFormValid) {
-      updateState({ error: 'Пожалуйста, заполните обязательные поля корректно' })
+    if (state.isSubmitting) {
       return
     }
 
@@ -166,7 +141,8 @@ const Search = () => {
       const searchData = {
         ...state.values,
         district: state.values.district || 'Не указан',
-        street: state.values.street || 'Не указана'
+        street: state.values.street || 'Не указана',
+        city: state.values.city || 'Не указан'
       }
 
       const tg = window?.Telegram?.WebApp
@@ -181,7 +157,14 @@ const Search = () => {
     } finally {
       updateState({ isSubmitting: false })
     }
-  }, [state.isSubmitting, state.values, state.isFormValid])
+  }, [state.isSubmitting, state.values, updateState])
+
+  const filteredCities = useMemo(() => {
+    const searchTerm = (state.values.city || '').toLowerCase()
+    return POPULAR_CITIES.filter(city =>
+      city.toLowerCase().includes(searchTerm)
+    )
+  }, [state.values.city])
 
   return (
     <div className="search-container">
@@ -207,22 +190,18 @@ const Search = () => {
           </button>
           {state.showCityList && (
             <div className="city-dropdown">
-              {popularCities
-                .filter(city =>
-                  city.toLowerCase().includes((state.values.city || '').toLowerCase())
-                )
-                .map(city => (
-                  <div
-                    key={city}
-                    className="city-option"
-                    onClick={() => {
-                      handleInputChange('city', city)
-                      setState(prev => ({ ...prev, showCityList: false }))
-                    }}
-                  >
-                    {city}
-                  </div>
-                ))}
+              {filteredCities.map(city => (
+                <div
+                  key={city}
+                  className="city-option"
+                  onClick={() => {
+                    handleInputChange('city', city)
+                    setState(prev => ({ ...prev, showCityList: false }))
+                  }}
+                >
+                  {city}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -231,7 +210,7 @@ const Search = () => {
         {state.selectedCity && (
           <div className="input-wrapper">
             <AddressSuggestions
-              token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+              token={DADATA_TOKEN}
               value={state.values.street}
               onChange={(suggestion) => handleInputChange('street', suggestion)}
               inputProps={{
@@ -254,7 +233,7 @@ const Search = () => {
         {state.selectedCity && (
           <div className="input-wrapper">
             <AddressSuggestions
-              token="9db66acc64262b755a6cbde8bb766248ccdd3d87"
+              token={DADATA_TOKEN}
               value={state.values.district}
               onChange={(suggestion) => handleInputChange('district', suggestion)}
               inputProps={{
@@ -281,7 +260,7 @@ const Search = () => {
             onChange={e => handleInputChange('price', e.target.value)}
           >
             <option value="">Выберите ценовой диапазон</option>
-            {priceRanges.map(range => (
+            {PRICE_RANGES.map(range => (
               <option key={range} value={range}>{range}</option>
             ))}
           </select>
@@ -335,7 +314,7 @@ const Search = () => {
       <button
         className="search-button"
         onClick={handleSearch}
-        disabled={state.isSubmitting || !state.isFormValid}
+        disabled={state.isSubmitting}
       >
         {state.isSubmitting ? 'Поиск...' : 'Найти'}
       </button>
