@@ -21,7 +21,7 @@ const Create = () => {
 	const [selectedCity, setSelectedCity] = useState('')
 	const [streetSuggestion, setStreetSuggestion] = useState(null)
 	const [districtSuggestion, setDistrictSuggestion] = useState(null)
-	const [isFormValid, setIsFormValid] = useState(false)
+	const [validationMessage, setValidationMessage] = useState('')
 
 	const popularCities = useMemo(() => [
 		'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
@@ -36,11 +36,15 @@ const Create = () => {
 	useEffect(() => {
 		try {
 			const searchParams = new URLSearchParams(search)
-			const params = Array.from(searchParams.entries()).map(([type, placeholder]) => ({
-				type,
-				placeholder,
-				id: `${type}-${Math.random()}`
-			}))
+			const params = Array.from(searchParams.entries()).map(([type, value]) => {
+				const [placeholder, required] = value.split('|')
+				return {
+					type,
+					placeholder: decodeURIComponent(placeholder),
+					required: required === 'True' || ['city', 'street', 'number_phone', 'price'].includes(type),
+					id: `${type}-${Math.random()}`
+				}
+			})
 			setInputs(params)
 
 			const initialValues = params.reduce((acc, { type }) => ({ ...acc, [type]: '' }), {})
@@ -51,27 +55,33 @@ const Create = () => {
 		}
 	}, [search])
 
-	useEffect(() => {
-		const validateForm = () => {
-			const requiredFields = [
-				'city',
-				'street',
-				'number_phone',
-				'price',
-				'rooms'
-			]
+	const validateForm = useCallback(() => {
+		const requiredFields = inputs
+			.filter(input => input.required)
+			.map(input => input.type)
 
-			const isValid = requiredFields.every(field => {
-				const value = inputValues[field]
-				const fieldValid = value && value.trim().length > 0
-				return field === 'district' || fieldValid
+		const emptyFields = requiredFields.filter(field => {
+			const value = inputValues[field]
+			return !value || value.trim().length === 0
+		})
+
+		if (emptyFields.length > 0) {
+			const fieldNames = emptyFields.map(field => {
+				const input = inputs.find(i => i.type === field)
+				return input?.placeholder || field
 			})
-
-			setIsFormValid(isValid)
+			setValidationMessage(`Не заполнены обязательные поля: ${fieldNames.join(', ')}`)
+			return false
 		}
 
-		validateForm()
-	}, [inputValues])
+		if (inputValues.price && parseFloat(inputValues.price) <= 0) {
+			setValidationMessage('Цена должна быть больше 0')
+			return false
+		}
+
+		setValidationMessage('')
+		return true
+	}, [inputs, inputValues])
 
 	const formatPhoneNumber = useCallback((value) => {
 		const numbers = value.replace(/\D/g, '')
@@ -120,22 +130,26 @@ const Create = () => {
 				const trimmedValue = String(value || '').trim()
 				setInputValues(prev => ({ ...prev, [type]: trimmedValue }))
 			}
+			setError(null)
+			setValidationMessage('')
 		} catch (err) {
 			console.error('Ошибка при изменении поля:', err)
 		}
 	}, [formatPhoneNumber])
 
 	const handleCreate = useCallback(async () => {
-		if (!isFormValid) {
-			setError('Пожалуйста, заполните все обязательные поля')
-			return
+		const isValid = validateForm()
+		if (!isValid) {
+			setError(validationMessage)
+			return // Прерываем выполнение если форма невалидна
 		}
 
 		setIsSubmitting(true)
 		try {
 			const dataToSend = {
 				...inputValues,
-				district: inputValues.district || 'Не указан'
+				street: streetSuggestion?.value || inputValues.street,
+				district: districtSuggestion?.value || inputValues.district || 'Не указан'
 			}
 
 			const jsonData = JSON.stringify(dataToSend)
@@ -144,22 +158,23 @@ const Create = () => {
 			if (tg) {
 				await tg.sendData(jsonData)
 				setSuccess(true)
+				setError(null)
 			} else {
-				console.warn('⚠️ Telegram WebApp не доступен, данные будут показаны в alert')
 				alert(
 					`Данные для отправки:\n${Object.entries(dataToSend)
 						.map(([k, v]) => `${k}: ${v}`)
 						.join('\n')}`
 				)
 				setSuccess(true)
+				setError(null)
 			}
-		} catch (err) {
-			console.error('❌ Ошибка при отправке данных:', err)
+		} catch (error) {
+			console.error('Ошибка при отправке:', error)
 			setError('Произошла ошибка при отправке данных. Попробуйте еще раз.')
 		} finally {
 			setIsSubmitting(false)
 		}
-	}, [inputValues, isFormValid])
+	}, [inputValues, validateForm, validationMessage, streetSuggestion, districtSuggestion])
 
 	const toggleCityList = useCallback(() => {
 		setShowCityList(prev => !prev)
@@ -171,7 +186,7 @@ const Create = () => {
 				<input
 					type="text"
 					className="input-field"
-					placeholder="Введите город"
+					placeholder="Введите город *"
 					value={inputValues.city}
 					onChange={e => handleInputChange('city', e.target.value)}
 					onFocus={() => setShowCityList(true)}
@@ -215,7 +230,7 @@ const Create = () => {
 						value={streetSuggestion}
 						onChange={(suggestion) => handleInputChange('street', suggestion)}
 						inputProps={{
-							placeholder: "Введите улицу",
+							placeholder: "Введите улицу *",
 							className: 'react-dadata__input',
 							autoComplete: "off"
 						}}
@@ -260,13 +275,13 @@ const Create = () => {
 				</div>
 			)}
 
-			{inputs.map(({ type, placeholder, id }) => (
+			{inputs.map(({ type, placeholder, id, required }) => (
 				<div key={id} className="input-wrapper">
 					{type === 'number_phone' ? (
 						<input
 							type="tel"
 							className="input-field"
-							placeholder={placeholder}
+							placeholder={`${placeholder}${required ? ' *' : ''}`}
 							value={inputValues[type]}
 							onChange={e => handleInputChange(type, e.target.value)}
 							maxLength={18}
@@ -274,12 +289,13 @@ const Create = () => {
 						/>
 					) : (
 						<input
-							type="text"
+							type={type === 'price' ? 'number' : 'text'}
 							className="input-field"
-							placeholder={placeholder}
+							placeholder={`${placeholder}${required ? ' *' : ''}`}
 							value={inputValues[type]}
 							onChange={e => handleInputChange(type, e.target.value)}
 							autoComplete="off"
+							min={type === 'price' ? "1" : undefined}
 						/>
 					)}
 				</div>
@@ -295,10 +311,11 @@ const Create = () => {
 			<button
 				className="create-button"
 				onClick={handleCreate}
-				disabled={isSubmitting || !isFormValid}
+				disabled={isSubmitting || !!error}
 			>
 				{isSubmitting ? 'Отправка...' : 'Создать'}
 			</button>
+			<div className="form-note">* - обязательные поля</div>
 		</div>
 	)
 }
