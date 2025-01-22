@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddressSuggestions } from 'react-dadata'
 import 'react-dadata/dist/react-dadata.css'
 import { useLocation } from 'react-router-dom'
+import cities from '../../data/List_of_cities'
 import './Update.css'
+
 
 const Update = () => {
   const { search } = useLocation()
@@ -17,15 +19,8 @@ const Update = () => {
   const [districtSuggestion, setDistrictSuggestion] = useState(null)
   const [isFormValid, setIsFormValid] = useState(false)
 
-  const popularCities = useMemo(() => [
-    'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
-    'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
-    'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград',
-    'Краснодар', 'Саратов', 'Тюмень', 'Тольятти', 'Ижевск',
-    'Барнаул', 'Иркутск', 'Ульяновск', 'Хабаровск', 'Ярославль',
-    'Владивосток', 'Махачкала', 'Томск', 'Оренбург', 'Кемерово',
-    'Новокузнецк', 'Рязань', 'Астрахань', 'Пенза', 'Липецк'
-  ], [])
+  const popularCities = useMemo(() => cities, [])
+
 
   useEffect(() => {
     try {

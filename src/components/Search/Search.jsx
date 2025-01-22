@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AddressSuggestions } from 'react-dadata'
 import 'react-dadata/dist/react-dadata.css'
 import { useLocation } from 'react-router-dom'
+import cities from '../../data/List_of_cities'
 import './Search.css'
 
 const INITIAL_STATE = {
@@ -28,18 +29,14 @@ const PRICE_RANGES = [
   '20000-25000 ₽', '25000-30000 ₽', '30000-35000 ₽', 'от 35000 ₽'
 ]
 
-const POPULAR_CITIES = [
-  'Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань',
-  'Нижний Новгород', 'Челябинск', 'Самара', 'Омск', 'Ростов-на-Дону',
-  'Уфа', 'Красноярск', 'Воронеж', 'Пермь', 'Волгоград',
-  'Краснодар', 'Саратов', 'Тюмень', 'Тольятти', 'Ижевск'
-]
 
 const DADATA_TOKEN = '9db66acc64262b755a6cbde8bb766248ccdd3d87'
 
 const Search = () => {
   const { search } = useLocation()
   const [state, setState] = useState(INITIAL_STATE)
+
+  const POPULAR_CITIES = useMemo(() => cities, [])
 
   // Инициализация параметров из URL
   useEffect(() => {
