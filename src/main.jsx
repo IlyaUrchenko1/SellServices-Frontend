@@ -3,25 +3,27 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
 
-// Получаем объект Telegram WebApp
 const tg = window.Telegram.WebApp
 
-// Функция для применения темы
-function applyTheme(themeParams) {
-  document.body.style.backgroundColor = themeParams.bg_color || '#ffffff'
-  document.body.style.color = themeParams.text_color || '#000000'
-  // Примените другие параметры темы, такие как кнопки, ссылки и т.д.
+function applyTheme() {
+  const root = document.documentElement
+  
+  document.body.style.backgroundColor = '#1a1a1a'
+  document.body.style.color = '#ffffff'
+  
+  root.style.setProperty('--primary-color', '#7289da')
+  root.style.setProperty('--secondary-color', '#2f3136')
+  root.style.setProperty('--accent-color', '#ffffff')
+  root.style.setProperty('--text-primary', '#ffffff')
+  root.style.setProperty('--text-secondary', '#b9bbbe')
+  root.style.setProperty('--border-color', '#40444b')
+  root.style.setProperty('--input-bg', '#2f3136')
+  root.style.setProperty('--hover-bg', '#32353b')
 }
 
-// Применяем тему при загрузке
-if (tg.themeParams) {
-  applyTheme(tg.themeParams)
-}
+applyTheme()
 
-// Слушаем изменения темы
-tg.onEvent('themeChanged', () => {
-  applyTheme(tg.themeParams)
-})
+tg.onEvent('themeChanged', applyTheme)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
