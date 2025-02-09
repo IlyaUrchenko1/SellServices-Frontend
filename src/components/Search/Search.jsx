@@ -21,14 +21,15 @@ const INITIAL_STATE = {
   showCityList: false,
   selectedCity: '',
   showDistrict: false,
-  isFormValid: true // Всегда валидная форма
+  dropdownOptions: {}, // Хранит опции для выпадающих списков
+  showDropdowns: {}, // Состояния отображения выпадающих списков
+  isFormValid: true
 }
 
 const PRICE_RANGES = [
   'до 5000 ₽', '5000-10000 ₽', '10000-15000 ₽', '15000-20000 ₽',
   '20000-25000 ₽', '25000-30000 ₽', '30000-35000 ₽', 'от 35000 ₽'
 ]
-
 
 const DADATA_TOKEN = '9db66acc64262b755a6cbde8bb766248ccdd3d87'
 
@@ -41,11 +42,18 @@ const Search = () => {
   // Инициализация параметров из URL
   useEffect(() => {
     const searchParams = new URLSearchParams(search)
-    const params = Array.from(searchParams.entries()).map(([type, placeholder]) => ({
-      type,
-      placeholder,
-      id: `${type}-${Math.random()}`
-    }))
+    const params = Array.from(searchParams.entries()).map(([type, placeholder]) => {
+      const [label, options] = placeholder.split('|').map(s => s.trim())
+      const dropdownOptions = options ? options.split(' ').filter(Boolean) : null
+
+      return {
+        type,
+        placeholder: label,
+        id: `${type}-${Math.random()}`,
+        hasDropdown: !!dropdownOptions,
+        options: dropdownOptions
+      }
+    })
 
     setState(prev => ({
       ...prev,
@@ -53,7 +61,14 @@ const Search = () => {
       values: {
         ...prev.values,
         ...params.reduce((acc, { type }) => ({ ...acc, [type]: '' }), {})
-      }
+      },
+      dropdownOptions: params.reduce((acc, { type, options }) => {
+        if (options) {
+          acc[type] = options
+        }
+        return acc
+      }, {}),
+      showDropdowns: params.reduce((acc, { type }) => ({ ...acc, [type]: false }), {})
     }))
   }, [search])
 
@@ -120,6 +135,16 @@ const Search = () => {
     })
   }, [])
 
+  const toggleDropdown = useCallback((type) => {
+    setState(prev => ({
+      ...prev,
+      showDropdowns: {
+        ...prev.showDropdowns,
+        [type]: !prev.showDropdowns[type]
+      }
+    }))
+  }, [])
+
   const toggleCityList = useCallback(() => {
     setState(prev => ({
       ...prev,
@@ -161,7 +186,7 @@ const Search = () => {
     return POPULAR_CITIES.filter(city =>
       city.toLowerCase().includes(searchTerm)
     )
-  }, [state.values.city])
+  }, [state.values.city, POPULAR_CITIES])
 
   return (
     <div className="search-container">
@@ -292,16 +317,53 @@ const Search = () => {
         </div>
 
         {/* Динамические поля из URL */}
-        {state.inputs.map(({ type, placeholder, id }) => (
+        {state.inputs.map(({ type, placeholder, id, hasDropdown }) => (
           !['city', 'district', 'street'].includes(type) && (
             <div key={id} className="input-wrapper">
-              <input
-                type="text"
-                className="input-field"
-                placeholder={placeholder}
-                value={state.values[type] || ''}
-                onChange={e => handleInputChange(type, e.target.value)}
-              />
+              {hasDropdown ? (
+                <div className="dropdown-input-wrapper">
+                  <input
+                    type="text"
+                    className="input-field"
+                    placeholder={placeholder}
+                    value={state.values[type] || ''}
+                    onChange={e => handleInputChange(type, e.target.value)}
+                    readOnly
+                    onClick={() => toggleDropdown(type)}
+                  />
+                  <button
+                    type="button"
+                    className="dropdown-button"
+                    onClick={() => toggleDropdown(type)}
+                  >
+                    {state.showDropdowns[type] ? '▲' : '▼'}
+                  </button>
+                  {state.showDropdowns[type] && (
+                    <div className="dropdown-list">
+                      {state.dropdownOptions[type].map(option => (
+                        <div
+                          key={option}
+                          className="dropdown-option"
+                          onClick={() => {
+                            handleInputChange(type, option)
+                            toggleDropdown(type)
+                          }}
+                        >
+                          {option}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <input
+                  type="text"
+                  className="input-field"
+                  placeholder={placeholder}
+                  value={state.values[type] || ''}
+                  onChange={e => handleInputChange(type, e.target.value)}
+                />
+              )}
             </div>
           )
         ))}
