@@ -21,15 +21,25 @@ const INITIAL_STATE = {
   showCityList: false,
   selectedCity: '',
   showDistrict: false,
-  dropdownOptions: {}, // Хранит опции для выпадающих списков
-  showDropdowns: {}, // Состояния отображения выпадающих списков
-  isFormValid: true
+  dropdownOptions: {},
+  showDropdowns: {},
+  isFormValid: true,
+  header: '',
+  priceLevel: 0
 }
 
-const PRICE_RANGES = [
-  'до 5000 ₽', '5000-10000 ₽', '10000-15000 ₽', '15000-20000 ₽',
-  '20000-25000 ₽', '25000-30000 ₽', '30000-35000 ₽', 'от 35000 ₽'
-]
+const getPriceRanges = (level) => {
+  if (level === 0) {
+    return [
+      'до 500 ₽', '500-1000 ₽', '1000-1500 ₽', '1500-2000 ₽',
+      '2000-2500 ₽', '2500-3000 ₽', '3000-3500 ₽', 'от 3500 ₽'
+    ]
+  }
+  return [
+    'до 5000 ₽', '5000-10000 ₽', '10000-15000 ₽', '15000-20000 ₽',
+    '20000-25000 ₽', '25000-30000 ₽', '30000-35000 ₽', 'от 35000 ₽'
+  ]
+}
 
 const DADATA_TOKEN = '9db66acc64262b755a6cbde8bb766248ccdd3d87'
 
@@ -39,37 +49,73 @@ const Search = () => {
 
   const POPULAR_CITIES = useMemo(() => cities, [])
 
-  // Инициализация параметров из URL
   useEffect(() => {
-    const searchParams = new URLSearchParams(search)
-    const params = Array.from(searchParams.entries()).map(([type, placeholder]) => {
-      const [label, options] = placeholder.split('|').map(s => s.trim())
-      const dropdownOptions = options ? options.split(' ').filter(Boolean) : null
+    try {
+      const searchParams = new URLSearchParams(search)
+      const initialValues = {}
 
-      return {
-        type,
-        placeholder: label,
-        id: `${type}-${Math.random()}`,
-        hasDropdown: !!dropdownOptions,
-        options: dropdownOptions
+      // Получаем заголовок из параметров
+      const header = searchParams.get('header')
+
+      // Получаем уровень цен
+      const priceLevel = parseInt(searchParams.get('price_level') || '1')
+
+      // Парсим адрес
+      const address = searchParams.get('adress')
+      if (address) {
+        const [city = '', street = ''] = address.split(',').map(part => {
+          return part
+            .replace(/^г\s+/, '')
+            .replace(/^ул\s+/, '')
+            .replace(/^д\s+/, '')
+            .trim()
+        })
+
+        initialValues.city = city
+        initialValues.street = street
       }
-    })
 
-    setState(prev => ({
-      ...prev,
-      inputs: params,
-      values: {
-        ...prev.values,
-        ...params.reduce((acc, { type }) => ({ ...acc, [type]: '' }), {})
-      },
-      dropdownOptions: params.reduce((acc, { type, options }) => {
-        if (options) {
-          acc[type] = options
+      // Парсим остальные параметры и создаем поля для формы
+      const params = Array.from(searchParams.entries()).map(([type, value]) => {
+        if (type === 'adress' || type === 'header' || type === 'price_level') return null
+
+        const [placeholder, options] = value.split('|').map(s => s.trim())
+        const dropdownOptions = options ? options.split(' ').filter(Boolean) : null
+
+        initialValues[type] = decodeURIComponent(placeholder)
+
+        return {
+          type,
+          placeholder: decodeURIComponent(placeholder),
+          id: `${type}-${Math.random()}`,
+          hasDropdown: !!dropdownOptions,
+          options: dropdownOptions
         }
-        return acc
-      }, {}),
-      showDropdowns: params.reduce((acc, { type }) => ({ ...acc, [type]: false }), {})
-    }))
+      }).filter(Boolean)
+
+      setState(prev => ({
+        ...prev,
+        inputs: params,
+        values: {
+          ...prev.values,
+          ...initialValues
+        },
+        selectedCity: initialValues.city || '',
+        header: header ? decodeURIComponent(header) : '',
+        priceLevel,
+        dropdownOptions: params.reduce((acc, { type, options }) => {
+          if (options) {
+            acc[type] = options
+          }
+          return acc
+        }, {}),
+        showDropdowns: params.reduce((acc, { type }) => ({ ...acc, [type]: false }), {})
+      }))
+
+    } catch (err) {
+      console.error('Ошибка при инициализации формы:', err)
+      setState(prev => ({ ...prev, error: 'Ошибка при загрузке формы' }))
+    }
   }, [search])
 
   const updateState = useCallback((updates) => {
@@ -190,6 +236,9 @@ const Search = () => {
 
   return (
     <div className="search-container">
+      {state.header && (
+        <h1 className="page-header">{state.header}</h1>
+      )}
       <div className="inputs-container">
         {/* Поле выбора города */}
         <div className="input-wrapper city-input-wrapper">
@@ -282,7 +331,7 @@ const Search = () => {
             onChange={e => handleInputChange('price', e.target.value)}
           >
             <option value="">Выберите ценовой диапазон</option>
-            {PRICE_RANGES.map(range => (
+            {getPriceRanges(state.priceLevel).map(range => (
               <option key={range} value={range}>{range}</option>
             ))}
           </select>

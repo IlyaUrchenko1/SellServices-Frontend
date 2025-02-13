@@ -24,7 +24,8 @@ const INITIAL_STATE = {
   districtSuggestion: null,
   validationMessage: '',
   dropdownOptions: {},
-  showDropdowns: {}
+  showDropdowns: {},
+  header: ''
 }
 
 const DADATA_TOKEN = '9db66acc64262b755a6cbde8bb766248ccdd3d87'
@@ -39,6 +40,10 @@ const Update = () => {
     try {
       const searchParams = new URLSearchParams(search)
       const initialValues = {}
+
+      // Получаем заголовок из параметров
+      const header = searchParams.get('header')
+      console.log(header)
 
       // Парсим адрес
       const address = searchParams.get('adress')
@@ -57,7 +62,7 @@ const Update = () => {
 
       // Парсим остальные параметры и создаем поля для формы
       const params = Array.from(searchParams.entries()).map(([type, value]) => {
-        if (type === 'adress') return null
+        if (type === 'adress' || type === 'header') return null
 
         const [placeholder, options] = value.split('|').map(s => s.trim())
         const dropdownOptions = options ? options.split(' ').filter(Boolean) : null
@@ -82,6 +87,7 @@ const Update = () => {
           ...initialValues
         },
         selectedCity: initialValues.city || '',
+        header: header ? decodeURIComponent(header) : '',
         dropdownOptions: params.reduce((acc, { type, options }) => {
           if (options) {
             acc[type] = options
@@ -274,6 +280,9 @@ const Update = () => {
 
   return (
     <div className="update-container">
+      {state.header && (
+        <h1 className="page-header">{state.header}</h1>
+      )}
       <div className="inputs-container">
         <div className="input-wrapper city-input-wrapper">
           <input

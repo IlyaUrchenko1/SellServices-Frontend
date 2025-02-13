@@ -24,7 +24,8 @@ const INITIAL_STATE = {
 	districtSuggestion: null,
 	validationMessage: '',
 	dropdownOptions: {}, // Хранит опции для выпадающих списков
-	showDropdowns: {} // Состояния отображения выпадающих списков
+	showDropdowns: {}, // Состояния отображения выпадающих списков
+	header: ''
 }
 
 const DADATA_TOKEN = '9db66acc64262b755a6cbde8bb766248ccdd3d87'
@@ -38,9 +39,34 @@ const Create = () => {
 	useEffect(() => {
 		try {
 			const searchParams = new URLSearchParams(search)
+			const initialValues = {}
+
+			// Получаем заголовок из параметров
+			const header = searchParams.get('header')
+
+			// Парсим адрес
+			const address = searchParams.get('adress')
+			if (address) {
+				const [city = '', street = ''] = address.split(',').map(part => {
+					return part
+						.replace(/^г\s+/, '')
+						.replace(/^ул\s+/, '')
+						.replace(/^д\s+/, '')
+						.trim()
+				})
+
+				initialValues.city = city
+				initialValues.street = street
+			}
+
+			// Парсим остальные параметры и создаем поля для формы
 			const params = Array.from(searchParams.entries()).map(([type, value]) => {
+				if (type === 'adress' || type === 'header') return null
+
 				const [placeholder, options] = value.split('|').map(s => s.trim())
 				const dropdownOptions = options ? options.split(' ').filter(Boolean) : null
+
+				initialValues[type] = decodeURIComponent(placeholder)
 
 				return {
 					type,
@@ -50,15 +76,17 @@ const Create = () => {
 					hasDropdown: !!dropdownOptions,
 					options: dropdownOptions
 				}
-			})
+			}).filter(Boolean)
 
 			setState(prev => ({
 				...prev,
 				inputs: params,
 				values: {
 					...prev.values,
-					...params.reduce((acc, { type }) => ({ ...acc, [type]: '' }), {})
+					...initialValues
 				},
+				selectedCity: initialValues.city || '',
+				header: header ? decodeURIComponent(header) : '',
 				dropdownOptions: params.reduce((acc, { type, options }) => {
 					if (options) {
 						acc[type] = options
@@ -239,6 +267,7 @@ const Create = () => {
 
 	return (
 		<div className="create-container">
+			<h1 className="page-header">{state.header}</h1>
 			<div className="inputs-container">
 				<div className="input-wrapper city-input-wrapper">
 					<input

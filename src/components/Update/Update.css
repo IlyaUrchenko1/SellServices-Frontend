@@ -1,20 +1,36 @@
 :root {
-	--primary-color: #282828; /* Основной цвет кнопок и активных элементов */
-	--hover-color: #333333; /* Цвет при наведении */
-	--font-family: "Inter", sans-serif; /* Улучшенный шрифт */
-	--background-color: #121212; /* Основной фон */
-	--secondary-background: #1a1a1a; /* Фон для секций */
-	--text-color: #e0e0e0; /* Основной текст (чуть светлее для читабельности) */
-	--text-secondary: #a0a0a0; /* Вторичный текст (чуть менее насыщенный) */
-	--border-color: #292929; /* Цвет границ и разделителей */
-	--input-background: #1e1e1e; /* Фон инпутов */
-	--hover-background: #252525; /* Фон при наведении */
-	--dropdown-text: #ffffff; /* Цвет текста в выпадающем списке */
-	--error-color: #e74c3c; /* Ошибки (яркий, но не кислотный) */
-	--success-color: #2ecc71; /* Успех (приятный зелёный) */
-	--dropdown-background: #222222; /* Фон выпадающего списка */
-	--dropdown-hover: #2c2c2c; /* Ховер в списке */
-	--inputs-container: #202020; /* Контейнеры с инпутами */
+	--primary-color: #282828;
+	/* Основной цвет кнопок и активных элементов */
+	--hover-color: #333333;
+	/* Цвет при наведении */
+	--font-family: "Inter", sans-serif;
+	/* Улучшенный шрифт */
+	--background-color: #121212;
+	/* Основной фон */
+	--secondary-background: #1a1a1a;
+	/* Фон для секций */
+	--text-color: #e0e0e0;
+	/* Основной текст (чуть светлее для читабельности) */
+	--text-secondary: #a0a0a0;
+	/* Вторичный текст (чуть менее насыщенный) */
+	--border-color: #292929;
+	/* Цвет границ и разделителей */
+	--input-background: #1e1e1e;
+	/* Фон инпутов */
+	--hover-background: #252525;
+	/* Фон при наведении */
+	--dropdown-text: #ffffff;
+	/* Цвет текста в выпадающем списке */
+	--error-color: #e74c3c;
+	/* Ошибки (яркий, но не кислотный) */
+	--success-color: #2ecc71;
+	/* Успех (приятный зелёный) */
+	--dropdown-background: #222222;
+	/* Фон выпадающего списка */
+	--dropdown-hover: #2c2c2c;
+	/* Ховер в списке */
+	--inputs-container: #202020;
+	/* Контейнеры с инпутами */
 }
 
 
@@ -183,6 +199,19 @@
 	margin-top: 1rem;
 	font-size: 0.875rem;
 }
+
+.page-header {
+	font-size: 2.25rem;
+	font-weight: 700;
+	margin: 2rem 0 3rem;
+	color: var(--text-color);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+	position: relative;
+	padding-bottom: 1rem;
+}
+
 
 /* Стили для выпадающего списка с кнопкой */
 .dropdown-input-wrapper {
